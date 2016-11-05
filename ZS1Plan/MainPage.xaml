@@ -1,0 +1,172 @@
+﻿<Page
+    x:Class="ZS1Plan.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:ZS1Plan"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Page.Resources>
+        <Style TargetType="Button" x:Key="ButtonSegoeStyle">
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
+            <Setter Property="FontSize" Value="24" />
+            <Setter Property="Padding" Value="10" />
+        </Style>
+        
+        <Style TargetType="TextBlock" x:Key="TextBlockSegoeStyle">
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
+            <Setter Property="FontSize" Value="18" />
+        </Style>
+        
+    </Page.Resources>
+    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition/>
+        </Grid.RowDefinitions>
+
+        <RelativePanel BorderBrush="DarkGray" 
+                       BorderThickness="0,0,0,1"
+                       Background="Wheat">
+            
+            <Button RelativePanel.AlignLeftWithPanel="True"  
+                    Style="{StaticResource ButtonSegoeStyle}"
+                    Content="&#xE700;"
+                    Click="MenuButton_Click"
+                    Name="MenuButton"/>
+
+            <TextBlock RelativePanel.RightOf="MenuButton"
+                       RelativePanel.AlignVerticalCenterWithPanel="True"
+                       Margin="10,0"
+                       FontSize="18"
+                       Text="Plan lekcji"
+                       FontWeight="SemiBold"
+                       Name="TitleText" />
+            
+        </RelativePanel>
+
+        <SplitView Grid.Row="1"
+                   Name="MenuSplitView"
+                   OpenPaneLength="300">
+            <SplitView.Pane>
+                <Grid>
+                    
+                    <Grid.RowDefinitions>
+                        <RowDefinition />
+                        <RowDefinition />
+                    </Grid.RowDefinitions>
+
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition />
+                        </Grid.RowDefinitions>
+                        
+                        <RelativePanel VerticalAlignment="Top"
+                                       BorderBrush="DarkGray" BorderThickness="0,0,0,1">
+                            
+                            <TextBlock RelativePanel.AlignLeftWithPanel="True"
+                                       Style="{StaticResource TextBlockSegoeStyle}" 
+                                       Text="&#xE787;"
+                                       FontSize="28"
+                                       Padding="10"
+                                       Name="MenuListOfSectionsHeader"/>
+                            
+                            <TextBlock RelativePanel.RightOf="MenuListOfSectionsHeader"
+                                       RelativePanel.AlignVerticalCenterWithPanel="True"
+                                       VerticalAlignment="Center"
+                                       Text="Oddziały" />
+                        </RelativePanel>
+
+                        <Grid Grid.Row="1" Background="DarkGray" />
+                        
+                        <ListView Name="MenuListViewOfSections"
+                                  Margin="35,0"
+                                  Background="LightGray"
+                                  Grid.Row="1">
+                            
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="local:Timetable">
+                                    <TextBlock FontSize="13" Text="{x:Bind name}"/>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                            
+                        </ListView>
+                    </Grid>
+
+                    <Grid Grid.Row="1">
+                        
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition />
+                        </Grid.RowDefinitions>
+
+                        <RelativePanel VerticalAlignment="Top"
+                                       BorderBrush="DarkGray" BorderThickness="0,1,0,1">
+                            
+                            <TextBlock RelativePanel.AlignLeftWithPanel="True"
+                                       Style="{StaticResource TextBlockSegoeStyle}" 
+                                       Text="&#xE787;"
+                                       FontSize="28"
+                                       Padding="10"
+                                       Name="MenuListOfTeachersHeader"/>
+                            
+                            <TextBlock RelativePanel.RightOf="MenuListOfTeachersHeader"
+                                       RelativePanel.AlignVerticalCenterWithPanel="True"
+                                       VerticalAlignment="Center"
+                                       Text="Nauczyciele" />
+                            
+                        </RelativePanel>
+                        
+                        <Grid Grid.Row="1">
+                            
+                            <Grid.RowDefinitions>
+                                <RowDefinition />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <Grid Background="DarkGray" />
+                            
+                            <ListView Name="MenuListViewOfTeachers"
+                                  Margin="35,0"
+                                  Background="LightGray">
+                                
+                                <ListView.ItemTemplate>
+                                    <DataTemplate x:DataType="local:Timetable">
+                                        <TextBlock FontSize="13" Text="{x:Bind name}"/>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+
+                            <AutoSuggestBox Name="MenuListViewOfTeachersTextBox"
+                                            Grid.Row="1"
+                                            QueryIcon="Zoom"
+                                            TextChanged="MenuListViewOfTeachersTextBox_TextChanged" />
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </SplitView.Pane>
+            <SplitView.Content>
+                <Grid>
+                    
+                </Grid>
+            </SplitView.Content>
+        </SplitView>
+
+        <StackPanel Grid.Row="1" 
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Name="InfoCenterStackPanel">
+
+            <TextBlock Name="InfoCenterText"/>
+            
+            <Button Margin="0,10,0,0"
+                    Background="LightGreen" 
+                    Name="InfoCenterButton"
+                    Width="200"
+                    Content="OK"/>
+        </StackPanel>
+    </Grid>
+</Page>
