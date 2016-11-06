@@ -73,6 +73,10 @@ namespace ZS1Plan
 
                         var spanList = item.QuerySelectorAll("span");
                         lesson.lesson1Name = spanList.First(p => p.ClassName == "p").TextContent;
+
+                        if (!lesson.lesson1Name.Contains("1/2") && !lesson.lesson1Name.Contains("2/2"))
+                            lesson.lesson1Name += "-" + (item.TextContent.Contains("1/2") ? "1/2" : item.TextContent.Contains("2/2") ? "2/2" : "");
+
                         lesson.lesson1Place = spanList.First(p => p.ClassName == "s").TextContent;
 
                         var adressList = item.QuerySelectorAll("a");
@@ -109,7 +113,7 @@ namespace ZS1Plan
                 }
 
                 timetable.type = 0;
-                OnTimeTableDownloaded?.Invoke(timetable, listOfClasses.Children.Count()+listOfTeachers.Children.Count());
+                OnTimeTableDownloaded?.Invoke(timetable, listOfClasses.Children.Count() + listOfTeachers.Children.Count());
             }
 
             for (int i = 0; i < listOfTeachers.Children.Count(); i++)
