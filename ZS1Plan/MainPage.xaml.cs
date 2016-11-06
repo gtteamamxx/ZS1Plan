@@ -8,11 +8,13 @@ using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Windows.Foundation.Metadata;
 using Windows.UI;
+using Windows.UI.Text;
 using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
 using Windows.UI.Xaml.Data;
+using Windows.UI.Xaml.Documents;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
@@ -53,6 +55,7 @@ namespace ZS1Plan
             {
                 InfoCenterStackPanel.Visibility = Visibility.Visible;
                 InfoCenterProgressRing.Visibility = Visibility.Visible;
+                InfoCenterButton.Visibility = Visibility.Collapsed;
 
                 InfoCenterText.Text = "Trwa wczytywanie planu zajęć...";
 
@@ -70,7 +73,7 @@ namespace ZS1Plan
                 // if -1 -> new timetable
                 if (numOfClassesTimeTables == -1)
                 {
-                    InfoCenterText.Text = "Naciśnij przycisk menu u góry i wybierz interesujący Cię plan zajęc.";
+                    InfoCenterText.Text = "Naciśnij przycisk menu u góry i wybierz interesujący Cię plan zajęć.";
                     InfoCenterButton.Visibility = Visibility.Collapsed;
 
                     isLoaded = true;
@@ -102,7 +105,7 @@ namespace ZS1Plan
             }
             //jesli nie ma
 
-            DownloadTimeTables("By przeglądać plan zajeć, musiz go zsynchronizować, chcesz to zrobić teraz?");
+            DownloadTimeTables("By przeglądać plan zajęć, musiz go zsynchronizować, chcesz to zrobić teraz?");
         }
 
         private void DownloadTimeTables(string textToShowAtInfoCenter)
@@ -138,7 +141,7 @@ namespace ZS1Plan
 
                     HTMLServices.OnAllTimeTablesDownloaded += async () =>
                     {
-                        InfoCenterText.Text = "Synchronizowanie planu zakończone. Trwa zapisywanie planu zajeć...";
+                        InfoCenterText.Text = "Synchronizowanie planu zakończone. Trwa zapisywanie planu zajęć...";
 
                         timetable.idOfLastOpenedTimeTable = -1;
                         await DataServices.Serialize(timetable);
@@ -146,7 +149,7 @@ namespace ZS1Plan
                         (s as Button).Visibility = Visibility.Visible;
                         InfoCenterProgressRing.Visibility = Visibility.Collapsed;
 
-                        InfoCenterText.Text = "Synchronizowanie i zapisywanie planu zajeć zakończone.";
+                        InfoCenterText.Text = "Synchronizowanie i zapisywanie planu zajęć zakończone.";
                     };
 
                     await HTMLServices.getData();
@@ -171,12 +174,33 @@ namespace ZS1Plan
 
             var SplitViewContentGrid = MenuSplitViewContentGrid;
 
+            int idOfTimeTable = t.type == 0 ? timetable.timetablesOfClasses.IndexOf(t) :
+                timetable.timetablesOfClasses.Count() + timetable.timetableOfTeachers.IndexOf(t);
+
+            if (idOfTimeTable == timetable.idOfLastOpenedTimeTable && SplitViewContentGrid.Children.Count() > 0)
+                return;
+
             string[] dayNames = { "Nr", "Godz", "Poniedziałek", "Wtorek", "Środa", "Czwartek",
                                   "Piątek" };
 
             string[] lessonTimes = { "7:10 - 7:55", "8:00 - 8:45", "8:50 - 9:35", "9:45 - 10:30",
                                    "10:45 - 11:30", "11:35 - 12:20", "12:30 - 13:15", "13:20 - 14:05",
-                                    "14:10 - 14:55", "15:00 - 15:45", "15:50 - 16:35"};
+                                    "14:10 - 14:55", "15:00 - 15:45", "15:50 - 16:35" };
+
+            TimeSpan timeNow = DateTime.Now.TimeOfDay;
+            int actualHour = timeNow.Hours;
+            int actualMinute = timeNow.Minutes;
+
+            int actualLesson = actualHour == 7 ? 1 : (actualHour == 8 && actualMinute < 55) ? 2 :
+                ((actualHour == 8 && actualMinute >= 55) || actualHour == 9 && actualMinute < 45) ? 3 :
+                ((actualHour == 9 && actualMinute >= 45) || actualHour == 10 && actualMinute < 45) ? 4 :
+                ((actualHour == 10 && actualMinute >= 45) || actualHour == 11 && actualMinute < 35) ? 5 :
+                ((actualHour == 11 && actualMinute >= 35) || actualHour == 12 && actualMinute < 30) ? 6 :
+                ((actualHour == 12 && actualMinute >= 30) || actualHour == 13 && actualMinute < 20) ? 7 :
+                ((actualHour == 13 && actualMinute >= 20) || actualHour == 14 && actualMinute < 10) ? 8 :
+                ((actualHour == 14 && actualMinute >= 10) || actualHour == 15) ? 9 :
+                ((actualHour == 15 && actualMinute >= 0) || actualHour == 15 && actualMinute < 50) ? 10 :
+                ((actualHour == 15 && actualMinute >= 50) || actualHour >= 16) ? 11 : 0;
 
             var headerGrid = SplitViewContentGrid.Parent as Grid;
 
@@ -205,7 +229,7 @@ namespace ZS1Plan
                     TextBlock tx = new TextBlock();
                     tx.Text = dayNames[i];
                     tx.HorizontalAlignment = HorizontalAlignment.Center;
-                    tx.Padding = new Thickness(10.0);
+                    tx.Padding = new Thickness(5.0);
 
                     Grid grid = new Grid();
                     grid.Children.Add(tx);
@@ -213,6 +237,7 @@ namespace ZS1Plan
 
                     grid.BorderBrush = new SolidColorBrush(Colors.Black);
                     grid.BorderThickness = new Thickness(1.0);
+                    grid.Background = new SolidColorBrush(Colors.LightCyan);
 
                     SplitViewContentGrid.Children.Add(grid);
                 }
@@ -248,32 +273,56 @@ namespace ZS1Plan
                     for (int j = 0; j < 7; j++)
                     {
                         TextBlock tx = new TextBlock();
+                        Grid grid = new Grid();
 
                         string text = string.Empty;
+
+                        if (j == 0 || j == 1)
+                        {
+                            tx.HorizontalAlignment = HorizontalAlignment.Center;
+                            tx.VerticalAlignment = VerticalAlignment.Center;
+                        }
 
                         if (j == 0)
                         {
                             text = i.ToString();
-                            tx.HorizontalAlignment = HorizontalAlignment.Center;
+                            grid.Background = new SolidColorBrush(Colors.LightCyan);
                         }
                         else if (j == 1)
                         {
                             text = lessonTimes[i - 1];
-                            tx.HorizontalAlignment = HorizontalAlignment.Center;
+                            grid.Background = new SolidColorBrush(Colors.LightGreen);
                         }
                         else
                         {
                             var lesson = t.days[j - 2].Lessons[i - 1];
-                            text = lesson.lesson1Name;
 
-                            if (!string.IsNullOrEmpty(lesson.lesson2Name))
-                                text += Environment.NewLine + lesson.lesson2Name;
+                            if (t.type == 1 && !string.IsNullOrEmpty(lesson.lesson2Name))
+                                tx.Inlines.Add(new Run() { Text = $"{lesson.lesson2Name} ", FontWeight = FontWeights.Light });
+
+                            tx.Inlines.Add((new Run() { Text = lesson.lesson1Name ?? " ", FontWeight = FontWeights.Bold }));
+
+                            if (string.IsNullOrEmpty(lesson.lesson1Tag))
+                                tx.Inlines.Add(new Run() { Text = $" {lesson.lesson1Place}" ?? " ", Foreground = new SolidColorBrush(Colors.Red) });
+                            else
+                            {
+                                tx.Inlines.Add(new Run() { Text = $" {lesson.lesson1Tag}" ?? " ", Foreground = new SolidColorBrush(Colors.Purple) });
+                                tx.Inlines.Add(new Run() { Text = $" {lesson.lesson1Place}" ?? " ", Foreground = new SolidColorBrush(Colors.Red) });
+                            }
+
+                            if (!string.IsNullOrEmpty(lesson.lesson2Name) && t.type == 0)
+                            {
+                                tx.Inlines.Add(new Run() { Text = $"{Environment.NewLine}{lesson.lesson2Name}", FontWeight = FontWeights.Bold });
+                                tx.Inlines.Add(new Run() { Text = $" {lesson.lesson2Tag}" ?? " ", Foreground = new SolidColorBrush(Colors.Purple) });
+                                tx.Inlines.Add(new Run() { Text = $" {lesson.lesson2Place}" ?? " ", Foreground = new SolidColorBrush(Colors.Red) });
+                            }
                         }
 
-                        tx.Text = text == null ? "" : text;
                         tx.Padding = new Thickness(10.0);
 
-                        Grid grid = new Grid();
+                        if (text != "")
+                            tx.Text = text;
+
                         grid.Children.Add(tx);
 
                         Grid.SetColumn(grid, j);
@@ -281,13 +330,16 @@ namespace ZS1Plan
 
                         grid.BorderBrush = new SolidColorBrush(Colors.Black);
                         grid.BorderThickness = new Thickness(1.0);
+
+                        if (i == actualLesson)
+                        {
+                            grid.BorderThickness = new Thickness(2);
+                            grid.BorderBrush = new SolidColorBrush(Colors.Red);
+                        }
                         SplitViewContentGrid.Children.Add(grid);
                     }
                 }
             }
-
-            int idOfTimeTable = t.type == 0 ? timetable.timetablesOfClasses.IndexOf(t) :
-                timetable.timetablesOfClasses.Count() + timetable.timetableOfTeachers.IndexOf(t);
 
             if (idOfTimeTable != timetable.idOfLastOpenedTimeTable)
             {
@@ -330,7 +382,7 @@ namespace ZS1Plan
             if (tb != null)
                 tb.Text = "";
 
-            DownloadTimeTables("Naciśnij przycisk OK, aby pobrać nowy plan zajeć.");
+            DownloadTimeTables("Naciśnij przycisk OK, aby pobrać nowy plan zajęć.");
         }
     }
 }
