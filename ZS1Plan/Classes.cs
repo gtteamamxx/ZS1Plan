@@ -38,11 +38,11 @@ namespace ZS1Plan
     /*public class Section
     {
         public int idOfSection { get; set; }
-        public override string ToString() => MainPage.timetable.timetablesOfClasses[idOfSection].name;
+        public override string ToString() => MainPage.Timetable.timetablesOfClasses[idOfSection].name;
     }
     public class Teacher
     {
         public int idOfTeacher { get; set; }
-        public override string ToString() => MainPage.timetable.timetableOfTeachers[idOfTeacher].name;
+        public override string ToString() => MainPage.Timetable.timetableOfTeachers[idOfTeacher].name;
     }*/
 }
