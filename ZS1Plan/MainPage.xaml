@@ -5,7 +5,8 @@
     xmlns:local="using:ZS1Plan"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d">
+    mc:Ignorable="d"
+    IsTabStop="True"> <!-- Disables auto focusing on autosuggestbox -->
 
     <Page.Resources>
         <Style TargetType="Button" x:Key="ButtonSegoeStyle">
@@ -117,7 +118,13 @@
                                        RelativePanel.AlignVerticalCenterWithPanel="True"
                                        VerticalAlignment="Center"
                                        Text="Nauczyciele" />
-                            
+
+                            <Button RelativePanel.AlignRightWithPanel="True" 
+                                    Name="MenuListOfTeachersSearchButton"
+                                    Style="{StaticResource ButtonSegoeStyle}"
+                                    Content="&#xE11A;"
+                                    Click="MenuListOfTeachersSearchButton_Click"/>
+
                         </RelativePanel>
                         
                         <Grid Grid.Row="1">
@@ -128,11 +135,11 @@
                             </Grid.RowDefinitions>
 
                             <Grid Background="DarkGray" />
-                            
+
                             <ListView Name="MenuListViewOfTeachers"
                                   Margin="35,0"
                                   Background="LightGray">
-                                
+
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="local:Timetable">
                                         <TextBlock FontSize="13" Text="{x:Bind name}"/>
@@ -143,7 +150,10 @@
                             <AutoSuggestBox Name="MenuListViewOfTeachersTextBox"
                                             Grid.Row="1"
                                             QueryIcon="Zoom"
-                                            TextChanged="MenuListViewOfTeachersTextBox_TextChanged" />
+                                            TextChanged="MenuListViewOfTeachersTextBox_TextChanged"
+                                            IsFocusEngaged="False"
+                                            IsFocusEngagementEnabled="False"
+                                            Visibility="Collapsed"/>
                         </Grid>
                     </Grid>
                 </Grid>
@@ -158,15 +168,26 @@
         <StackPanel Grid.Row="1" 
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
-                    Name="InfoCenterStackPanel">
+                    Name="InfoCenterStackPanel"
+                    Visibility="Collapsed">
 
-            <TextBlock Name="InfoCenterText"/>
+            <TextBlock Name="InfoCenterText"
+                       Padding="10"
+                       TextWrapping="Wrap"/>
             
             <Button Margin="0,10,0,0"
                     Background="LightGreen" 
+                    HorizontalAlignment="Center"
                     Name="InfoCenterButton"
                     Width="200"
                     Content="OK"/>
+
+            <ProgressRing Width="50"
+                          Height="50"
+                          Name="InfoCenterProgressRing"
+                          IsActive="True"
+                          Visibility="Collapsed"/>
+
         </StackPanel>
     </Grid>
 </Page>

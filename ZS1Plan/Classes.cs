@@ -11,11 +11,13 @@ namespace ZS1Plan
     {
         public ObservableCollection<Timetable> timetablesOfClasses { get; set; }
         public ObservableCollection<Timetable> timetableOfTeachers { get; set; }
+        public int idOfLastOpenedTimeTable { get; set; }
     }
     public class Timetable
     {
         public string name { get; set; }
         public List<Day> days { get; set; }
+        public int type { get; set; } // 0 - class | 1 - teacher
     }
     public class Day
     {

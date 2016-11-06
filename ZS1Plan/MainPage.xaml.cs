@@ -45,23 +45,108 @@ namespace ZS1Plan
             }
             this.Loaded += MainPage_Loaded;
         }
+
         private async void MainPage_Loaded(object sender, RoutedEventArgs e)
         {
-            // load
-
-            //jesli nie ma
             InfoCenterStackPanel.Visibility = Visibility.Visible;
-            InfoCenterText.Text = "By przeglądać plan lekcji, musiz go pobrać, chcesz go pobrać teraz?";
+            // load
+            if (DataServices.IsFileExists())
+            {
+                InfoCenterText.Text = "Trwa wczytywanie planu lekcji...";
+                InfoCenterProgressRing.Visibility = Visibility.Visible;
 
-            timetable = await HTMLServices.getData();
+                timetable = await DataServices.Deserialize();
 
-            MenuListViewOfSections.ItemsSource = timetableOfSections;
-            MenuListViewOfTeachers.ItemsSource = timetableOfTeachers;
+                MenuListViewOfSections.ItemsSource = timetableOfSections;
+                MenuListViewOfTeachers.ItemsSource = timetableOfTeachers;
+
+                InfoCenterProgressRing.Visibility = Visibility.Collapsed;
+
+                //show last opened
+                int numOfClassesTimeTables = timetable.timetablesOfClasses.Count();
+                bool isReturnNeeded = false;
+
+                // -1 -> new timetable
+                if (numOfClassesTimeTables == -1)
+                {
+                    InfoCenterText.Text = "Naciśnij przycisk menu u góry i wybierz ineresujący Cię plan zajęc.";
+                    isLoaded = true;
+                    isReturnNeeded = true;
+                }
+
+                if (isReturnNeeded)
+                    return;
+
+                InfoCenterStackPanel.Visibility = Visibility.Collapsed;
+
+                int idOfTimeTable;
+
+                idOfTimeTable = timetable.idOfLastOpenedTimeTable >= numOfClassesTimeTables ? 
+                    timetable.idOfLastOpenedTimeTable - numOfClassesTimeTables : 
+                    numOfClassesTimeTables;
+
+                //show
+
+                isLoaded = true;
+                return;
+            }
+            //jesli nie ma
+            InfoCenterText.Text = "By przeglądać plan lekcji, musiz go zsynchronizować, chcesz to zrobić teraz?";
+            InfoCenterButton.Click += async (s, es) =>
+            {
+                if (InfoCenterText.Text[0] == 'B')
+                {
+                    (s as Button).Visibility = Visibility.Collapsed;
+                    InfoCenterProgressRing.Visibility = Visibility.Collapsed;
+
+                    InfoCenterText.Text = "Trwa synchronizowanie planu...";
+
+                    timetable.timetableOfTeachers = new ObservableCollection<Timetable>();
+                    timetable.timetablesOfClasses = new ObservableCollection<Timetable>();
+
+                    int numOfTimeTable = 0;
+                    HTMLServices.OnTimeTableDownloaded += (timeTable, lenght) =>
+                    {
+                        if (timeTable.type == 0) timetable.timetablesOfClasses.Add(timeTable);
+                        else timetable.timetableOfTeachers.Add(timeTable);
+
+                        int percentOfDownloadedTimeTables = (int)(0.5f + (++numOfTimeTable * 100) / lenght);
+                        InfoCenterText.Text = "["+ percentOfDownloadedTimeTables.ToString()+ "%] Trwa dodawanie: " + timeTable.name;
+                    };
+
+                    HTMLServices.OnAllTimeTablesDownloaded += async () =>
+                    {
+                        InfoCenterText.Text = "Synchronizowanie planu zakończone. Trwa zapisywanie planu lekcji...";
+
+                        timetable.idOfLastOpenedTimeTable = -1;
+                        await DataServices.Serialize(timetable);
+
+                        (s as Button).Visibility = Visibility.Visible;
+                        InfoCenterProgressRing.Visibility = Visibility.Collapsed;
+
+                        InfoCenterText.Text = "Synchronizowanie i zapisywanie planu lekcji zakończone.";
+                    };
+
+                    await HTMLServices.getData();
+                }
+                else
+                {
+                    isLoaded = true;
+
+                    InfoCenterStackPanel.Visibility = Visibility.Collapsed;
+
+                    MenuListViewOfSections.ItemsSource = timetableOfSections;
+                    MenuListViewOfTeachers.ItemsSource = timetableOfTeachers;
+
+                    MenuSplitView.IsPaneOpen = true;
+                }
+            };
+
         }
 
         private void MenuButton_Click(object sender, RoutedEventArgs e)
         {
-            if(isLoaded)
+            if(isLoaded) 
                 MenuSplitView.IsPaneOpen = !MenuSplitView.IsPaneOpen;
         }
         
@@ -75,6 +160,12 @@ namespace ZS1Plan
                 return;
             }
             MenuListViewOfTeachers.ItemsSource = timetableOfTeachers.Where(p => p.name.ToLower().Contains(text));
+        }
+
+        private void MenuListOfTeachersSearchButton_Click(object sender, RoutedEventArgs e)
+        {
+            MenuListViewOfTeachersTextBox.Visibility = MenuListViewOfTeachersTextBox.Visibility == Visibility.Collapsed ? Visibility.Visible : Visibility.Collapsed;
+            if (MenuListViewOfTeachersTextBox.Visibility == Visibility.Visible) MenuListViewOfTeachersTextBox.Focus(FocusState.Programmatic);
         }
     }
 }

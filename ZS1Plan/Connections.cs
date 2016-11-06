@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -15,6 +16,11 @@ namespace ZS1Plan
 {
     public class HTMLServices
     {
+        public delegate void TimeTableDownloaded(Timetable timetable, int lenght);
+        public delegate void AllTimeTablesDownloaed();
+
+        public static event TimeTableDownloaded OnTimeTableDownloaded;
+        public static event AllTimeTablesDownloaed OnAllTimeTablesDownloaded;
         public static async Task<string> getSource(string url)
         {
             var http = new HttpClient();
@@ -24,15 +30,10 @@ namespace ZS1Plan
             return @Encoding.UTF8.GetString(data);
         }
 
-        public static async Task<SchoolTimetable> getData()
+        public async static Task getData()
         {
             HtmlParser parser = new HtmlParser();
             var document = await parser.ParseAsync(await @getSource("http://zs-1.pl/plan_nauczyciele/lista.html"));
-
-            var finalTimetable = new SchoolTimetable();
-
-            var classesTimetable = new ObservableCollection<Timetable>();
-            var teachersTimetable = new ObservableCollection<Timetable>();
 
             var listOfTables = document.QuerySelectorAll("ul");
             var listOfClasses = listOfTables[0];
@@ -76,7 +77,7 @@ namespace ZS1Plan
 
                         var adressList = item.QuerySelectorAll("a");
 
-                        if(adressList.Count() == 0)
+                        if (adressList.Count() == 0)
                         {
                             lesson.lesson1Tag = spanList.Where(p => p.ClassName == "p").ToList()[1].TextContent;
                             lesson.lesson1TagHref = "";
@@ -107,7 +108,8 @@ namespace ZS1Plan
                     timetable.days.Add(day);
                 }
 
-                classesTimetable.Add(timetable);
+                timetable.type = 0;
+                OnTimeTableDownloaded?.Invoke(timetable, listOfClasses.Children.Count()+listOfTeachers.Children.Count());
             }
 
             for (int i = 0; i < listOfTeachers.Children.Count(); i++)
@@ -157,13 +159,11 @@ namespace ZS1Plan
                     timetable.days.Add(day);
                 }
 
-                teachersTimetable.Add(timetable);
+                timetable.type = 1;
+                OnTimeTableDownloaded?.Invoke(timetable, listOfClasses.Children.Count() + listOfTeachers.Children.Count());
             }
 
-            finalTimetable.timetablesOfClasses = classesTimetable;
-            finalTimetable.timetableOfTeachers = teachersTimetable;
-
-            return finalTimetable;
+            OnAllTimeTablesDownloaded?.Invoke();
         }
 
         public static bool HasInternetConnection()
@@ -176,7 +176,14 @@ namespace ZS1Plan
     public class DataServices
     {
         private static StorageFolder LocalFolder = ApplicationData.Current.LocalFolder;
-        private static string FileName = "PlanLekcjiZs1.xml";
+        private static string FileName = "ZS1Plan.xml";
+
+        public static bool IsFileExists()
+        {
+            if (!File.Exists(Path.Combine(LocalFolder.Path, FileName)))
+                return false;
+            return true;
+        }
         public static async Task<SchoolTimetable> Deserialize()
         {
             XmlSerializer xmlSerializer = new XmlSerializer(typeof(SchoolTimetable));
