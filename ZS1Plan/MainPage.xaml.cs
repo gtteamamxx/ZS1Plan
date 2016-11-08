@@ -192,12 +192,14 @@ namespace ZS1Plan
                 InfoCenterStackPanel.Visibility = Visibility.Collapsed;
             }
 
+            var SplitViewContentGrid = MenuSplitViewContentGrid;
+
             string[] dayNames = { "Nr", "Godz", "Poniedziałek", "Wtorek", "Środa", "Czwartek",
                                   "Piątek" };
 
             string[] lessonTimes = { "7:10 - 7:55", "8:00 - 8:45", "8:50 - 9:35", "9:45 - 10:30",
                                    "10:45 - 11:30", "11:35 - 12:20", "12:30 - 13:15", "13:20 - 14:05",
-                                    "14:10 - 14:55", "15:00 - 15:45", "15:50 - 16:35" };
+                                    "14:10 - 14:55", "15:00 - 15:45", "15:50 - 16:35"};
 
             var timeNow = DateTime.Now.TimeOfDay;
             var actualHour = timeNow.Hours;
@@ -258,12 +260,10 @@ namespace ZS1Plan
 
                     splitViewContentGrid.ColumnDefinitions.Add(cd);
 
-                    var tx = new TextBlock()
-                    {
-                        Text = dayNames[i],
-                        HorizontalAlignment = HorizontalAlignment.Center,
-                        Padding = new Thickness(5.0)
-                    };
+                    TextBlock tx = new TextBlock();
+                    tx.Text = dayNames[i];
+                    tx.HorizontalAlignment = HorizontalAlignment.Center;
+                    tx.Padding = new Thickness(10.0);
 
                     var grid = new Grid();
                     grid.Children.Add(tx);
@@ -303,14 +303,9 @@ namespace ZS1Plan
 
                 if (i == 0)
                 {
-                    continue;
-                }
-                for (var j = 0; j < 7; j++)
-                {
-                    var tx = new TextBlock();
-                    var grid = new Grid();
-
-                    var text = string.Empty;
+                    for (int j = 0; j < 7; j++)
+                    {
+                        TextBlock tx = new TextBlock();
 
                     if (j == 0 || j == 1)
                     {
@@ -318,64 +313,46 @@ namespace ZS1Plan
                         tx.VerticalAlignment = VerticalAlignment.Center;
                     }
 
-                    if (j == 0)
-                    {
-                        text = i.ToString();
-                        grid.Background = new SolidColorBrush(Colors.LightCyan);
-                    }
-                    else if (j == 1)
-                    {
-                        text = lessonTimes[i - 1];
-                        grid.Background = new SolidColorBrush(Colors.LightGreen);
-                    }
-                    else
-                    {
-                        var lesson = t.days[j - 2].Lessons[i - 1];
-
-                        if (t.type == 1 && !string.IsNullOrEmpty(lesson.lesson2Name))
-                            tx.Inlines.Add(new Run() { Text = $"{lesson.lesson2Name} ", FontWeight = FontWeights.Light });
-
-                        tx.Inlines.Add((new Run() { Text = lesson.lesson1Name ?? " ", FontWeight = FontWeights.Bold }));
-
-                        if (string.IsNullOrEmpty(lesson.lesson1Tag))
-                            tx.Inlines.Add(new Run() { Text = $" {lesson.lesson1Place}" ?? " ", Foreground = new SolidColorBrush(Colors.Red) });
+                        if (j == 0)
+                        {
+                            text = i.ToString();
+                            tx.HorizontalAlignment = HorizontalAlignment.Center;
+                        }
+                        else if (j == 1)
+                        {
+                            text = lessonTimes[i - 1];
+                            tx.HorizontalAlignment = HorizontalAlignment.Center;
+                        }
                         else
                         {
-                            tx.Inlines.Add(new Run() { Text = $" {lesson.lesson1Tag}" ?? " ", Foreground = new SolidColorBrush(Colors.Purple) });
-                            tx.Inlines.Add(new Run() { Text = $" {lesson.lesson1Place}" ?? " ", Foreground = new SolidColorBrush(Colors.Red) });
+                            var lesson = t.days[j - 2].Lessons[i - 1];
+                            text = lesson.lesson1Name;
+
+                            if (!string.IsNullOrEmpty(lesson.lesson2Name))
+                                text += Environment.NewLine + lesson.lesson2Name;
                         }
 
-                        if (!string.IsNullOrEmpty(lesson.lesson2Name) && t.type == 0)
-                        {
-                            tx.Inlines.Add(new Run() { Text = $"{Environment.NewLine}{lesson.lesson2Name}", FontWeight = FontWeights.Bold });
-                            tx.Inlines.Add(new Run() { Text = $" {lesson.lesson2Tag}" ?? " ", Foreground = new SolidColorBrush(Colors.Purple) });
-                            tx.Inlines.Add(new Run() { Text = $" {lesson.lesson2Place}" ?? " ", Foreground = new SolidColorBrush(Colors.Red) });
-                        }
-                    }
+                        tx.Text = text == null ? "" : text;
+                        tx.Padding = new Thickness(10.0);
 
-                    tx.Padding = new Thickness(10.0);
-
-                    if (text != "")
-                        tx.Text = text;
-
-                    grid.Children.Add(tx);
+                        Grid grid = new Grid();
+                        grid.Children.Add(tx);
 
                     Grid.SetColumn(grid, j);
                     Grid.SetRow(grid, i);
 
-                    grid.BorderBrush = new SolidColorBrush(Colors.Black);
-                    grid.BorderThickness = new Thickness(1.0);
-
-                    if (i == actualLesson)
-                    {
-                        grid.BorderThickness = new Thickness(2);
-                        grid.BorderBrush = new SolidColorBrush(Colors.Red);
+                        grid.BorderBrush = new SolidColorBrush(Colors.Black);
+                        grid.BorderThickness = new Thickness(1.0);
+                        SplitViewContentGrid.Children.Add(grid);
                     }
                     splitViewContentGrid.Children.Add(grid);
                 }
             }
 
-            if (idOfTimeTable != MainSchoolTimetable.idOfLastOpenedTimeTable)
+            int idOfTimeTable = t.type == 0 ? timetable.timetablesOfClasses.IndexOf(t) :
+                timetable.timetablesOfClasses.Count() + timetable.timetableOfTeachers.IndexOf(t);
+
+            if (idOfTimeTable != timetable.idOfLastOpenedTimeTable)
             {
                 MainSchoolTimetable.idOfLastOpenedTimeTable = idOfTimeTable;
                 await DataServices.Serialize(MainSchoolTimetable);
