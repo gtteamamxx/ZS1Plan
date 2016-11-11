@@ -12,6 +12,31 @@ namespace ZS1Plan
         public ObservableCollection<Timetable> timetablesOfClasses { get; set; }
         public ObservableCollection<Timetable> timetableOfTeachers { get; set; }
         public int idOfLastOpenedTimeTable { get; set; }
+
+        public Timetable GetLatestOpenedTimeTable()
+        {
+            if (idOfLastOpenedTimeTable == -1)
+            {
+                return null;
+            }
+
+            int idOfTimeTable;
+
+            var numOfClassesTimeTables = timetablesOfClasses.Count;
+
+            var type = 0;
+            if (idOfLastOpenedTimeTable < numOfClassesTimeTables)
+            {
+                idOfTimeTable = idOfLastOpenedTimeTable;
+            }
+            else
+            {
+                idOfTimeTable = idOfLastOpenedTimeTable - numOfClassesTimeTables;
+                type = 1;
+            }
+
+            return type == 0 ? timetablesOfClasses[idOfTimeTable] : timetableOfTeachers[idOfTimeTable];
+        }
     }
     public class Timetable
     {
@@ -35,14 +60,4 @@ namespace ZS1Plan
         public string lesson2Tag { get; set; }
         public string lesson2TagHref { get; set; }
     }
-    /*public class Section
-    {
-        public int idOfSection { get; set; }
-        public override string ToString() => MainPage.Timetable.timetablesOfClasses[idOfSection].name;
-    }
-    public class Teacher
-    {
-        public int idOfTeacher { get; set; }
-        public override string ToString() => MainPage.Timetable.timetableOfTeachers[idOfTeacher].name;
-    }*/
 }

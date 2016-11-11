@@ -1,71 +1,80 @@
-﻿using AngleSharp.Parser.Html;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using System.Xml.Serialization;
 using Windows.Networking.Connectivity;
-using Windows.Storage;
+using AngleSharp.Parser.Html;
+using System.Net.Http;
+using AngleSharp.Dom;
 
 namespace ZS1Plan
 {
-    public class HTMLServices
+    public class HtmlServices
     {
+        private const string NoLessonString = @"&nbsp;";
+
         public delegate void TimeTableDownloaded(Timetable timetable, int lenght);
         public delegate void AllTimeTablesDownloaed();
 
         public static event TimeTableDownloaded OnTimeTableDownloaded;
         public static event AllTimeTablesDownloaed OnAllTimeTablesDownloaded;
-        public static async Task<string> getSource(string url)
+
+        private static async Task<string> GetSource(string url)
         {
             var http = new HttpClient();
             var stream = await http.GetAsync(url);
-            byte[] data = await stream.Content.ReadAsByteArrayAsync();
+            var data = await stream.Content.ReadAsByteArrayAsync();
 
             return @Encoding.UTF8.GetString(data);
         }
 
-        public async static Task getData()
+        public static void InvokeAllTimeTableDownloaded()
         {
-            HtmlParser parser = new HtmlParser();
-            var document = await parser.ParseAsync(await @getSource("http://zs-1.pl/plan_nauczyciele/lista.html"));
+            OnAllTimeTablesDownloaded?.Invoke();
+        }
+        public static async Task GetData()
+        {
+            var parser = new HtmlParser();
+            var document = await parser.ParseAsync(await GetSource("http://zs-1.pl/plan_nauczyciele/lista.html"));
 
             var listOfTables = document.QuerySelectorAll("ul");
-            var listOfClasses = listOfTables[0];
-            var listOfTeachers = listOfTables[1];
 
-            for (int i = 0; i < listOfClasses.Children.Count(); i++)
+            await FormatClasses(listOfTables[1].Children.Count(), listOfTables[0]);
+            await FormatTeachers(listOfTables[0].Children.Count(), listOfTables[1]);
+
+            InvokeAllTimeTableDownloaded();
+        }
+
+        private static async Task FormatClasses(int listOfTeachersElementsNum, IElement listOfClasses)
+        {
+            for (var i = 0; i < listOfClasses.Children.Count(); i++)
             {
-                string url = "http://zs-1.pl/plan_nauczyciele/" + listOfClasses.Children[i].FirstElementChild.GetAttribute("href");
-                document = await parser.ParseAsync(await getSource(url));
+                var url = "http://zs-1.pl/plan_nauczyciele/" + listOfClasses.Children[i].FirstElementChild.GetAttribute("href");
+                var document = await new HtmlParser().ParseAsync(await GetSource(url));
 
-                string className = document.QuerySelector("span").TextContent;
+                var className = document.QuerySelector("span").TextContent;
 
                 var listOfHours = document.QuerySelectorAll("table").Where(p => p.ClassName == "tabela").ToList().First()
                     .QuerySelectorAll("tr").Where(p => p.FirstElementChild.ClassName == "nr").ToList();
 
-                Timetable timetable = new Timetable();
-
-                timetable.name = className;
-                timetable.days = new List<Day>();
-
-                for (int d = 0; d < 5; d++)
+                var timetable = new Timetable
                 {
-                    Day day = new Day();
-                    day.Lessons = new List<Lesson>();
+                    name = className,
+                    days = new List<Day>()
+                };
 
-                    for (int h = 0; h < listOfHours.Count(); h++)
+                for (var d = 0; d < 5; d++)
+                {
+                    var day = new Day { Lessons = new List<Lesson>() };
+
+                    for (var h = 0; h < listOfHours.Count(); h++)
                     {
-                        Lesson lesson = new Lesson();
+                        var lesson = new Lesson();
                         // 2, because 0 is h'our number, 1 is a ring time (eg. 7:10 -> xxx )
                         var item = listOfHours[h].Children[2 + d];
 
-                        if (item.InnerHtml == @"&nbsp;")
+                        if (item.InnerHtml == NoLessonString)
                         {
                             day.Lessons.Add(lesson);
                             continue;
@@ -92,27 +101,27 @@ namespace ZS1Plan
                             lesson.lesson1TagHref = adressList.First().GetAttribute("href");
                         }
 
-                        if (spanList.Where(p => p.ClassName == "p").Count() == 2 && (spanList.Where(p => p.ClassName == "s").Count() == 2))
+                        if (spanList.Count(p => p.ClassName == "p") == 2 && (spanList.Count(p => p.ClassName == "s") == 2))
                         {
                             lesson.lesson2Name = spanList.Where(p => p.ClassName == "p").ToList()[1].TextContent;
                             lesson.lesson2Place = spanList.Where(p => p.ClassName == "s").ToList()[1].TextContent;
                             lesson.lesson2Tag = adressList.Where(p => p.ClassName == "n").ToList()[1].TextContent;
                             lesson.lesson2TagHref = adressList[1].GetAttribute("href");
                         }
-                        else if (spanList.Where(p => p.ClassName == "p").Count() == 4 && (spanList.Where(p => p.ClassName == "s").Count() == 2))
+                        else if (spanList.Count(p => p.ClassName == "p") == 4 && (spanList.Count(p => p.ClassName == "s") == 2))
                         {
                             lesson.lesson2Name = spanList.Where(p => p.ClassName == "p").ToList()[2].TextContent;
                             lesson.lesson2Place = spanList.Where(p => p.ClassName == "s").ToList()[1].TextContent;
                             lesson.lesson2Tag = spanList.Where(p => p.ClassName == "p").ToList()[3].TextContent;
                             lesson.lesson2TagHref = "";
                         }
-                        else if (spanList.Where(p => p.ClassName == "p").Count() == 3 && (spanList.Where(p => p.ClassName == "s").Count() == 2))
+                        else if (spanList.Count(p => p.ClassName == "p") == 3 && (spanList.Count(p => p.ClassName == "s") == 2))
                         {
                             lesson.lesson2Name = spanList.Where(p => p.ClassName == "p").ToList()[1].TextContent;
 
-                            if(!lesson.lesson2Name.Contains("1/2") || !lesson.lesson2Name.Contains("2/2"))
+                            if (!lesson.lesson2Name.Contains("1/2") || !lesson.lesson2Name.Contains("2/2"))
                             {
-                                int positionOfLesson2Name = item.TextContent.IndexOf(lesson.lesson2Name);
+                                int positionOfLesson2Name = item.TextContent.IndexOf(lesson.lesson2Name, StringComparison.Ordinal);
                                 var substring = item.TextContent.Substring(positionOfLesson2Name, item.TextContent.Length - positionOfLesson2Name);
                                 lesson.lesson2Name += substring.Contains("1/2") ? "-1/2" : substring.Contains("2/2") ? "-2/2" : "";
                             }
@@ -129,36 +138,39 @@ namespace ZS1Plan
                 }
 
                 timetable.type = 0;
-                OnTimeTableDownloaded?.Invoke(timetable, listOfClasses.Children.Count() + listOfTeachers.Children.Count());
+                OnTimeTableDownloaded?.Invoke(timetable, listOfClasses.Children.Count() + listOfTeachersElementsNum);
             }
+        }
 
-            for (int i = 0; i < listOfTeachers.Children.Count(); i++)
+        private static async Task FormatTeachers(int classesTimetablesNum, IElement listOfTeachers)
+        {
+            for (var i = 0; i < listOfTeachers.Children.Count(); i++)
             {
-                string url = "http://zs-1.pl/plan_nauczyciele/" + listOfTeachers.Children[i].FirstElementChild.GetAttribute("href");
-                document = await parser.ParseAsync(await getSource(url));
+                var url = "http://zs-1.pl/plan_nauczyciele/" + listOfTeachers.Children[i].FirstElementChild.GetAttribute("href");
+                var document = await new HtmlParser().ParseAsync(await GetSource(url));
 
-                string className = document.QuerySelector("span").TextContent;
+                var className = document.QuerySelector("span").TextContent;
 
-                var listOfHours = document.QuerySelectorAll("table").Where(p => p.ClassName == "tabela").ToList().First()
+                var listOfHours = document.QuerySelectorAll("table").First(p => p.ClassName == "tabela")
                     .QuerySelectorAll("tr").Where(p => p.FirstElementChild.ClassName == "nr").ToList();
 
-                Timetable timetable = new Timetable();
-
-                timetable.name = className;
-                timetable.days = new List<Day>();
-
-                for (int d = 0; d < 5; d++)
+                var timetable = new Timetable()
                 {
-                    Day day = new Day();
-                    day.Lessons = new List<Lesson>();
+                    name = className,
+                    days = new List<Day>()
+                };
 
-                    for (int h = 0; h < listOfHours.Count(); h++)
+                for (var d = 0; d < 5; d++)
+                {
+                    var day = new Day() {Lessons = new List<Lesson>()};
+
+                    for (var h = 0; h < listOfHours.Count(); h++)
                     {
-                        Lesson lesson = new Lesson();
+                        var lesson = new Lesson();
                         // 2, because 0 is h'our number, 1 is a ring time (eg. 7:10 -> xxx )
                         var item = listOfHours[h].Children[2 + d];
 
-                        if (item.InnerHtml == @"&nbsp;")
+                        if (item.InnerHtml == NoLessonString)
                         {
                             day.Lessons.Add(lesson);
                             continue;
@@ -171,26 +183,26 @@ namespace ZS1Plan
                         var adressList = item.QuerySelectorAll("a");
                         if (adressList.Count() > 1)
                         {
-                            string outerHTML = item.OuterHtml;
-                            string fullString = string.Empty;
+                            var outerHtml = item.OuterHtml;
+                            var fullString = string.Empty;
 
                             foreach (var adressElement in adressList)
                             {
-                                int indexOfAdressElementInString = outerHTML.IndexOf(adressElement.OuterHtml);
+                                int indexOfAdressElementInString = outerHtml.IndexOf(adressElement.OuterHtml, StringComparison.Ordinal);
 
                                 fullString += adressElement.TextContent +
-                                   outerHTML.Substring(indexOfAdressElementInString + adressElement.OuterHtml.Length, 5).Trim();
+                                   outerHtml.Substring(indexOfAdressElementInString + adressElement.OuterHtml.Length, 5).Trim();
                             }
 
-                            if (fullString[fullString.Length-1] == ',')
-                                fullString.Remove(fullString.Length - 1, 1);
+                            if (fullString[fullString.Length - 1] == ',')
+                                fullString = fullString.Remove(fullString.Length - 1, 1);
 
                             lesson.lesson2Name = fullString;
                         }
                         else
                             lesson.lesson2Name = adressList.First().TextContent + ((item.TextContent.Contains("1/2")) ? "-1/2" : item.TextContent.Contains("2/2") ? "-2/2" : "");
                         lesson.lesson1TagHref = adressList.First().GetAttribute("href");
-                        
+
                         day.Lessons.Add(lesson);
                     }
 
@@ -198,64 +210,14 @@ namespace ZS1Plan
                 }
 
                 timetable.type = 1;
-                OnTimeTableDownloaded?.Invoke(timetable, listOfClasses.Children.Count() + listOfTeachers.Children.Count());
+                OnTimeTableDownloaded?.Invoke(timetable, classesTimetablesNum + listOfTeachers.Children.Count());
             }
-
-            OnAllTimeTablesDownloaded?.Invoke();
         }
 
-        public static bool HasInternetConnection()
+        public static bool UserHasInternetConnection()
         {
-            ConnectionProfile profile = NetworkInformation.GetInternetConnectionProfile();
+            var profile = NetworkInformation.GetInternetConnectionProfile();
             return (profile != null && profile.GetNetworkConnectivityLevel() == NetworkConnectivityLevel.InternetAccess);
-        }
-    }
-
-    public class DataServices
-    {
-        private static StorageFolder LocalFolder = ApplicationData.Current.LocalFolder;
-        private static string FileName = "ZS1Plan.xml";
-
-        public static bool IsFileExists()
-        {
-            if (!File.Exists(Path.Combine(LocalFolder.Path, FileName)))
-                return false;
-            return true;
-        }
-        public static async Task<SchoolTimetable> Deserialize()
-        {
-            XmlSerializer xmlSerializer = new XmlSerializer(typeof(SchoolTimetable));
-
-            StorageFile FileToRead;
-
-            if (!File.Exists(Path.Combine(LocalFolder.Path, FileName)))
-                return null;
-            else
-                FileToRead = await LocalFolder.GetFileAsync(FileName);
-
-            using (StringReader textReader = new StringReader(await FileIO.ReadTextAsync(FileToRead)))
-            {
-                return (SchoolTimetable)xmlSerializer.Deserialize(textReader);
-            }
-        }
-
-        public static async Task Serialize(SchoolTimetable toSerialize)
-        {
-            XmlSerializer xmlSerializer = new XmlSerializer(typeof(SchoolTimetable));
-
-            using (StringWriter textWriter = new StringWriter())
-            {
-                xmlSerializer.Serialize(textWriter, toSerialize);
-
-                StorageFile FileToSave;
-
-                if (!File.Exists(Path.Combine(LocalFolder.Path, FileName)))
-                    FileToSave = await LocalFolder.CreateFileAsync(FileName);
-                else
-                    FileToSave = await LocalFolder.GetFileAsync(FileName);
-
-                await FileIO.WriteTextAsync(FileToSave, textWriter.ToString());
-            }
         }
     }
 }
