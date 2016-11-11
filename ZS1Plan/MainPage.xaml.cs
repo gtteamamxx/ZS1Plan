@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using Windows.Foundation.Metadata;
+using Windows.Storage;
 using Windows.UI;
 using Windows.UI.Text;
 using Windows.UI.ViewManagement;
@@ -28,9 +29,15 @@ namespace ZS1Plan
                                     "14:10 - 14:55", "15:00 - 15:45", "15:50 - 16:35" };
         private bool _isLoaded;
 
+        private static MainPage gui;
+
+        public static void SetTitleText(string text) => gui.TitleText.Text = text;
+        
         public MainPage()
         {
             InitializeComponent();
+
+            gui = this;
 
             if (ApiInformation.IsTypePresent("Windows.UI.ViewManagement.StatusBar"))
             {
@@ -40,6 +47,16 @@ namespace ZS1Plan
             }
 
             Loaded += MainPage_Loaded;
+
+            Windows.Phone.UI.Input.HardwareButtons.BackPressed += (s, e) =>
+            {
+                if (SplitViewContentFrame.SourcePageType == typeof(SettingsPage))
+                {
+                    SplitViewContentScrollViewer.Visibility = Visibility.Visible;
+                    SplitViewContentFrame.Visibility = Visibility.Collapsed;
+                    e.Handled = true;
+                }
+            };
         }
 
         private async void MainPage_Loaded(object sender, RoutedEventArgs e)
@@ -79,7 +96,6 @@ namespace ZS1Plan
                 _isLoaded = true;
                 return;
             }
-            //jesli nie ma
 
             DownloadTimeTables("By przeglądać plan zajęć, musiz go zsynchronizować, chcesz to zrobić teraz?");
         }
@@ -175,9 +191,9 @@ namespace ZS1Plan
 
                             _timeTable.idOfLastOpenedTimeTable = -1;
 
-                            bool isSerializedSuccesfullly = await DataServices.Serialize(_timeTable);
+                            bool isPlanSerializedSuccesfullly = await DataServices.Serialize(_timeTable);
 
-                            InfoCenterText.Text = !isSerializedSuccesfullly
+                            InfoCenterText.Text = !isPlanSerializedSuccesfullly
                                 ? "Zapisywanie planu zajęć NIE POWIODŁO SIĘ. Spróbować ponownie?"
                                 : "Synchronizowanie i zapisywanie planu zajęć zakończone.";
 
@@ -185,7 +201,7 @@ namespace ZS1Plan
                             InfoCenterProgressRing.Visibility = Visibility.Collapsed;
                         };
                     }
-
+ 
                     if (_isLoaded)
                     {
                         InfoCenterStackPanel.Visibility = Visibility.Collapsed;
@@ -214,6 +230,11 @@ namespace ZS1Plan
             if (InfoCenterStackPanel.Visibility == Visibility.Visible)
             {
                 InfoCenterStackPanel.Visibility = Visibility.Collapsed;
+            }
+            if (SplitViewContentScrollViewer.Visibility == Visibility.Collapsed)
+            {
+                SplitViewContentScrollViewer.Visibility = Visibility.Visible;
+                SplitViewContentFrame.Visibility = Visibility.Collapsed;
             }
 
             var splitViewContentGrid = MenuSplitViewContentGrid;
@@ -245,6 +266,12 @@ namespace ZS1Plan
             {
                 return;
             }
+
+            TitleText.Text = "Plan lekcji - " + t.name;
+
+            var actualTheme = ApplicationData.Current.LocalSettings.Values.ContainsKey("AppTheme")
+                ? (ApplicationTheme)int.Parse(ApplicationData.Current.LocalSettings.Values["AppTheme"] as string)
+                : ApplicationTheme.Light;
 
             if (headerGrid.Children.FirstOrDefault(p => p is TextBlock) == null)
             {
@@ -281,9 +308,9 @@ namespace ZS1Plan
                     grid.Children.Add(tx);
                     Grid.SetColumn(grid, i);
 
-                    grid.BorderBrush = new SolidColorBrush(Colors.Black);
+                    grid.BorderBrush = new SolidColorBrush(actualTheme == ApplicationTheme.Light ? Colors.Black : Colors.White);
                     grid.BorderThickness = new Thickness(1.0);
-                    grid.Background = new SolidColorBrush(Colors.LightCyan);
+                    grid.Background = new SolidColorBrush(actualTheme == ApplicationTheme.Light ? Colors.LightCyan : Color.FromArgb(127, 0, 150, 0));
 
                     splitViewContentGrid.Children.Add(grid);
                 }
@@ -332,12 +359,12 @@ namespace ZS1Plan
                     {
                         case 0:
                             text = i.ToString();
-                            grid.Background = new SolidColorBrush(Colors.LightCyan);
+                            grid.Background = new SolidColorBrush(actualTheme == ApplicationTheme.Light ? Colors.LightCyan : Color.FromArgb(127, 0, 150, 0));
                             break;
 
                         case 1:
                             text = _lessonTimes[i - 1];
-                            grid.Background = new SolidColorBrush(Colors.LightGreen);
+                            grid.Background = new SolidColorBrush(actualTheme == ApplicationTheme.Light ? Colors.LightGreen : Color.FromArgb(127, 204, 0, 0));
                             break;
 
                         default:
@@ -367,7 +394,7 @@ namespace ZS1Plan
                                 tx.Inlines.Add(new Run
                                 {
                                     Text = $" {lesson.lesson1Tag}" ?? " ",
-                                    Foreground = new SolidColorBrush(Colors.Purple)
+                                    Foreground = new SolidColorBrush(actualTheme == ApplicationTheme.Light ? Colors.Purple : Colors.LightCyan)
                                 });
                                 tx.Inlines.Add(new Run
                                 {
@@ -386,7 +413,7 @@ namespace ZS1Plan
                                 tx.Inlines.Add(new Run
                                 {
                                     Text = $" {lesson.lesson2Tag}" ?? " ",
-                                    Foreground = new SolidColorBrush(Colors.Purple)
+                                    Foreground = new SolidColorBrush(actualTheme == ApplicationTheme.Light ? Colors.Purple : Colors.LightCyan)
                                 });
                                 tx.Inlines.Add(new Run
                                 {
@@ -407,7 +434,7 @@ namespace ZS1Plan
                     Grid.SetColumn(grid, j);
                     Grid.SetRow(grid, i);
 
-                    grid.BorderBrush = new SolidColorBrush(Colors.Black);
+                    grid.BorderBrush = new SolidColorBrush(actualTheme == ApplicationTheme.Light ? Colors.Black : Colors.White);
                     grid.BorderThickness = new Thickness(1.0);
 
                     if (i == actualLesson)
@@ -453,16 +480,20 @@ namespace ZS1Plan
 
             return numOfTriesToSave > 0;
         }
+
         private void ResetView()
         {
             MenuSplitViewContentGrid.Children.Clear();
             TextBlock tb = (((Grid)MenuSplitViewContentGrid.Parent).Children.FirstOrDefault(p => p is TextBlock) as TextBlock);
+
+            TitleText.Text = "Plan lekcji";
 
             if (tb != null)
             {
                 tb.Text = "";
             }
         }
+
         private void MenuButton_Click(object sender, RoutedEventArgs e)
         {
             if (_isLoaded)
@@ -501,6 +532,13 @@ namespace ZS1Plan
         {
             ResetView();
             DownloadTimeTables("Naciśnij przycisk OK, aby pobrać nowy plan zajęć.");
+        }
+
+        private void SettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            SplitViewContentScrollViewer.Visibility = Visibility.Collapsed;
+            SplitViewContentFrame.Visibility = Visibility.Visible;
+            SplitViewContentFrame.Navigate(typeof(SettingsPage));
         }
     }
 }

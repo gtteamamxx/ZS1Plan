@@ -24,9 +24,16 @@ namespace ZS1Plan
 
             var fileToRead = await LocalFolder.GetFileAsync(planFileName);
 
-            using (var textReader = new StringReader(await FileIO.ReadTextAsync(fileToRead)))
+            try
             {
-                return (SchoolTimetable)xmlSerializer.Deserialize(textReader);
+                using (var textReader = new StringReader(await FileIO.ReadTextAsync(fileToRead)))
+                {
+                    return (SchoolTimetable) xmlSerializer.Deserialize(textReader);
+                }
+            }
+            catch
+            {
+                return null;
             }
         }
 
@@ -54,7 +61,14 @@ namespace ZS1Plan
                     return false;
                 }
 
-                await FileIO.WriteTextAsync(fileToSave, textWriter.ToString());
+                try
+                {
+                    await FileIO.WriteTextAsync(fileToSave, textWriter.ToString());
+                }
+                catch
+                {
+                    return false;
+                }
 
                 return true;
             }

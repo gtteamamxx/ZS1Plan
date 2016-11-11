@@ -7,6 +7,7 @@ using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Windows.Storage;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
@@ -28,6 +29,12 @@ namespace ZS1Plan
         /// </summary>
         public App()
         {
+            var appTheme = ApplicationData.Current.LocalSettings.Values.ContainsKey("AppTheme")
+                ? ApplicationData.Current.LocalSettings.Values["AppTheme"]
+                : null;
+
+            this.RequestedTheme = appTheme == null ? ApplicationTheme.Light : (ApplicationTheme) int.Parse(appTheme as string);
+
             this.InitializeComponent();
             this.Suspending += OnSuspending;
         }

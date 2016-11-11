@@ -1,0 +1,32 @@
+﻿<Page
+    x:Class="ZS1Plan.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:ZS1Plan"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    NavigationCacheMode="Required">
+
+    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Padding="20">
+        
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <ToggleSwitch Name="NightModeToogleSwitch" 
+                      OnContent="Włączono" 
+                      OffContent="Wyłączono">
+
+            <TextBlock>Tryb nocny</TextBlock>
+        </ToggleSwitch>
+        
+        <ToggleSwitch Grid.Row="1" 
+                      Name="HighLightActualLessonToogleSwitch" 
+                      OnContent="Włączono" 
+                      OffContent="Wyłączono">
+            Podświetl aktualne lekcje
+        </ToggleSwitch>
+    </Grid>
+</Page>
