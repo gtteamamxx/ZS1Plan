@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
 using Windows.Foundation.Metadata;
 using Windows.UI;
 using Windows.UI.Text;
@@ -83,6 +84,10 @@ namespace ZS1Plan
             DownloadTimeTables("By przeglądać plan zajęć, musiz go zsynchronizować, chcesz to zrobić teraz?");
         }
 
+        private bool _isButtonClickEventSubscribed;
+        private bool _isTimeTableDownloadedEventSubscribed;
+        private bool _isAllTimeTablesDownloadedSubscribed;
+
         private void DownloadTimeTables(string textToShowAtInfoCenter)
         {
             InfoCenterStackPanel.Visibility = Visibility.Visible;
@@ -98,14 +103,32 @@ namespace ZS1Plan
                 InfoCenterText.Text = "Aby odświeżyć plan zajęc, musisz mieć połączenie z internetem! Naciśnij przycisk poniżej aby spróbować ponownie";
             }
 
+            if (_isButtonClickEventSubscribed)
+            {
+                return;
+            }
+            else
+            {
+                _isButtonClickEventSubscribed = true;
+            }
+
             InfoCenterButton.Click += async (s, es) =>
             {
-                if (_isLoaded)
+                if (InfoCenterText.Text.Contains("NIE POWIODŁO SIĘ"))
                 {
-                    InfoCenterStackPanel.Visibility = Visibility.Collapsed;
-                    InfoCenterButton.Visibility = Visibility.Collapsed;
-                    ShowTimeTable(_timeTable.GetLatestOpenedTimeTable() ?? _timeTable.timetablesOfClasses[0]);
+                    HtmlServices.InvokeAllTimeTableDownloaded();
                     return;
+                }
+
+                if (!HtmlServices.UserHasInternetConnection())
+                {
+                    DownloadTimeTables(textToShowAtInfoCenter);
+                    return;
+                }
+
+                if(!InfoCenterText.Text.Contains("zakończone"))
+                {
+                    InfoCenterText.Text = textToShowAtInfoCenter;
                 }
 
                 if (InfoCenterText.Text == textToShowAtInfoCenter)
@@ -118,47 +141,61 @@ namespace ZS1Plan
                     _timeTable.timetableOfTeachers = new ObservableCollection<Timetable>();
                     _timeTable.timetablesOfClasses = new ObservableCollection<Timetable>();
 
-                    var numOfTimeTable = 0;
-                    HtmlServices.OnTimeTableDownloaded += (timeTable, lenght) =>
+                    if (!_isTimeTableDownloadedEventSubscribed)
                     {
-                        if (timeTable.type == 0)
-                        {
-                            _timeTable.timetablesOfClasses.Add(timeTable);
-                        }
-                        else
-                        {
-                            _timeTable.timetableOfTeachers.Add(timeTable);
-                        }
+                        _isTimeTableDownloadedEventSubscribed = true;
 
-                        var percentOfDownloadedTimeTables = (int)(0.5f + (++numOfTimeTable * 100.0) / lenght);
-                        InfoCenterText.Text = "[" + percentOfDownloadedTimeTables.ToString() + "%] Trwa dodawanie: " + timeTable.name;
-                    };
+                        HtmlServices.OnTimeTableDownloaded += (timeTable, lenght) =>
+                        {
+                            var numOfTimeTable = _timeTable.timetablesOfClasses.Count +
+                                                 _timeTable.timetableOfTeachers.Count();
 
-                    HtmlServices.OnAllTimeTablesDownloaded += async () =>
+                            if (timeTable.type == 0)
+                            {
+                                _timeTable.timetablesOfClasses.Add(timeTable);
+                            }
+                            else
+                            {
+                                _timeTable.timetableOfTeachers.Add(timeTable);
+                            }
+
+                            var percentOfDownloadedTimeTables = (int) (0.5f + (++numOfTimeTable*100.0)/lenght);
+                            InfoCenterText.Text = "[" + percentOfDownloadedTimeTables.ToString() + "%] Trwa dodawanie: " +
+                                                  timeTable.name;
+                        };
+                    }
+
+                    if (!_isAllTimeTablesDownloadedSubscribed)
                     {
-                        InfoCenterText.Text = "Trwa zapisywanie planu zajęć...";
+                        _isAllTimeTablesDownloadedSubscribed = true;
 
-                        _timeTable.idOfLastOpenedTimeTable = -1;
+                        HtmlServices.OnAllTimeTablesDownloaded += async () =>
+                        {
+                            InfoCenterText.Text = "Trwa zapisywanie planu zajęć...";
 
-                        bool isSerializedSuccesfullly = await DataServices.Serialize(_timeTable);
+                            _timeTable.idOfLastOpenedTimeTable = -1;
 
-                        InfoCenterText.Text = !isSerializedSuccesfullly ? "Zapisywanie planu zajęć NIE POWIODŁO SIĘ. Spróbować ponownie?" : 
-                            "Synchronizowanie i zapisywanie planu zajęć zakończone.";
+                            bool isSerializedSuccesfullly = await DataServices.Serialize(_timeTable);
 
-                        InfoCenterButton.Visibility = Visibility.Visible;
-                        InfoCenterProgressRing.Visibility = Visibility.Collapsed;
-                    };
+                            InfoCenterText.Text = !isSerializedSuccesfullly
+                                ? "Zapisywanie planu zajęć NIE POWIODŁO SIĘ. Spróbować ponownie?"
+                                : "Synchronizowanie i zapisywanie planu zajęć zakończone.";
 
+                            InfoCenterButton.Visibility = Visibility.Visible;
+                            InfoCenterProgressRing.Visibility = Visibility.Collapsed;
+                        };
+                    }
+
+                    if (_isLoaded)
+                    {
+                        InfoCenterStackPanel.Visibility = Visibility.Collapsed;
+                        InfoCenterButton.Visibility = Visibility.Collapsed;
+                        ShowTimeTable(_timeTable.GetLatestOpenedTimeTable() ?? _timeTable.timetablesOfClasses[0]);
+                    }
+
+                    _timeTable = new SchoolTimetable();
                     await HtmlServices.GetData();
-                }
-                else if (InfoCenterText.Text.Contains("NIE POWIODŁO SIĘ"))
-                {
-                    HtmlServices.InvokeAllTimeTableDownloaded();
-                }
-                else if (InfoCenterText.Text.Contains("odświeżyć"))
-                {
-                    DownloadTimeTables(textToShowAtInfoCenter);
-                }
+                } 
                 else
                 {
                     _isLoaded = true;
@@ -383,9 +420,28 @@ namespace ZS1Plan
             }
             
             /* Saving lastOpenedTimeTable */
+            if (await SaveLastOpenedTimeTableToFile(idOfTimeTable) == false)
+            {
+                /* If Plan is not saved */
+                ResetView();
+
+                InfoCenterStackPanel.Visibility = Visibility.Visible;
+                InfoCenterText.Visibility = Visibility.Visible;
+                InfoCenterButton.Visibility = Visibility.Collapsed;
+
+                InfoCenterText.Text =
+                    "Wystąpił błąd podczas zapisu danych. Prawdopodobnie masz za mało pamięci na telefonie," +
+                    " bądź inny błąd uniemożliwia zapis. Spróbuj uruchomić aplikację ponownie!";
+
+                _isLoaded = false;
+            }
+        }
+
+        private async Task<bool?> SaveLastOpenedTimeTableToFile(int idOfTimeTable)
+        {
             if (idOfTimeTable == _timeTable.idOfLastOpenedTimeTable)
             {
-                return;
+                return null;
             }
 
             _timeTable.idOfLastOpenedTimeTable = idOfTimeTable;
@@ -395,23 +451,8 @@ namespace ZS1Plan
             {
             } while (!await DataServices.Serialize(_timeTable) && --numOfTriesToSave == 0);
 
-            if (numOfTriesToSave > 0)
-            {
-                return;
-            }
-
-            /* If Plan is not saved */
-            ResetView();
-
-            InfoCenterStackPanel.Visibility = Visibility.Visible;
-            InfoCenterText.Visibility = Visibility.Visible;
-            InfoCenterButton.Visibility = Visibility.Collapsed;
-
-            InfoCenterText.Text =
-                "Wystąpił błąd podczas zapisu danych. Prawdopodobnie masz za mało pamięci na telefonie," +
-                " bądź inny błąd uniemożliwia zapis. Spróbuj uruchomić aplikację ponownie!";
+            return numOfTriesToSave > 0;
         }
-
         private void ResetView()
         {
             MenuSplitViewContentGrid.Children.Clear();

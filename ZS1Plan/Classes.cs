@@ -13,6 +13,12 @@ namespace ZS1Plan
         public ObservableCollection<Timetable> timetableOfTeachers { get; set; }
         public int idOfLastOpenedTimeTable { get; set; }
 
+        public SchoolTimetable()
+        {
+            timetableOfTeachers = new ObservableCollection<Timetable>();
+            timetablesOfClasses = new ObservableCollection<Timetable>();
+        }
+
         public Timetable GetLatestOpenedTimeTable()
         {
             if (idOfLastOpenedTimeTable == -1)

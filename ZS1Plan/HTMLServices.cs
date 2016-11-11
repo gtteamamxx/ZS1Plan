@@ -10,7 +10,7 @@ using AngleSharp.Dom;
 
 namespace ZS1Plan
 {
-    public class HtmlServices
+    public static class HtmlServices
     {
         private const string NoLessonString = @"&nbsp;";
 
@@ -33,6 +33,7 @@ namespace ZS1Plan
         {
             OnAllTimeTablesDownloaded?.Invoke();
         }
+
         public static async Task GetData()
         {
             var parser = new HtmlParser();
