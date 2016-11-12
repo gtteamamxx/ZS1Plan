@@ -163,7 +163,7 @@ namespace ZS1Plan
 
                 for (var d = 0; d < 5; d++)
                 {
-                    var day = new Day() {Lessons = new List<Lesson>()};
+                    var day = new Day() { Lessons = new List<Lesson>() };
 
                     for (var h = 0; h < listOfHours.Count(); h++)
                     {

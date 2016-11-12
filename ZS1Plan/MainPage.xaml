@@ -32,18 +32,18 @@
         <RelativePanel BorderBrush="DarkGray" 
                        BorderThickness="0,0,0,1"
                        Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-            
+
             <Button RelativePanel.AlignLeftWithPanel="True"  
                     Style="{ThemeResource ButtonSegoeStyle}"
                     Content="&#xE700;"
                     Click="MenuButton_Click"
                     Name="MenuButton"/>
-            
+
             <Button RelativePanel.RightOf="MenuButton"
                     Style="{ThemeResource ButtonSegoeStyle}"
                     Content="&#xE112;"
                     Name="BackButton"/>
-            
+
             <TextBlock RelativePanel.RightOf="BackButton"
                        RelativePanel.AlignVerticalCenterWithPanel="True"
                        Margin="10,0"

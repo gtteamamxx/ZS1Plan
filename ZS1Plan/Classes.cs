@@ -27,22 +27,6 @@ namespace ZS1Plan
             return listOfTimeTables;
         }
 
-        public void SetLastOpenedTimeTable(Timetable t)
-        {
-            if (t == null)
-            {
-                return;
-            }
-
-            int idOfTimeTable = TimetablesOfClasses.IndexOf(t);
-
-            if (idOfTimeTable == -1)
-            {
-                idOfTimeTable = TimetablesOfClasses.Count + TimetableOfTeachers.IndexOf(t);
-            }
-
-            IdOfLastOpenedTimeTable = idOfTimeTable;
-        }
         public Timetable GetLatestOpenedTimeTable()
         {
             var lastOpenedTimetable = new Timetable();

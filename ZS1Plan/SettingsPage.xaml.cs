@@ -76,7 +76,7 @@ namespace ZS1Plan
                 {
                     if (ApplicationData.Current.LocalSettings.Values.ContainsKey("ShowTimetableAtStartupSelectedPlan"))
                     {
-                        if ( (string) ApplicationData.Current.LocalSettings.Values["ShowTimetableAtStartupSelectedPlan"] != "")
+                        if ((string)ApplicationData.Current.LocalSettings.Values["ShowTimetableAtStartupSelectedPlan"] != "")
                         {
                             if (ApplicationData.Current.LocalSettings.Values.ContainsKey("ShowTimetableAtStartup"))
                             {
@@ -164,15 +164,6 @@ namespace ZS1Plan
             ShowTimeTableAtStartupComboBox.Visibility = Visibility.Collapsed;
 
         }
-        protected override void OnNavigatedTo(NavigationEventArgs e)
-        {
-            MainPage.SetTitleText("Ustawienia");
-
-            if (MainPage.InfoCenterStackPanelVisibility == Visibility.Visible)
-            {
-                MainPage.InfoCenterStackPanelVisibility = Visibility.Collapsed;
-            }
-        }
 
         private bool _firstTimeSettingsPageOpened;
         private void ShowTimeTableAtStartupComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -210,6 +201,16 @@ namespace ZS1Plan
 
             ApplicationData.Current.LocalSettings.Values.Remove("ShowTimetableAtStartupSelectedPlan");
             ApplicationData.Current.LocalSettings.Values.Add("ShowTimetableAtStartupSelectedPlan", selectedTimeTable.name);
+        }
+
+        protected override void OnNavigatedTo(NavigationEventArgs e)
+        {
+            MainPage.SetTitleText("Ustawienia");
+
+            if (MainPage.InfoCenterStackPanelVisibility == Visibility.Visible)
+            {
+                MainPage.InfoCenterStackPanelVisibility = Visibility.Collapsed;
+            }
         }
     }
 }

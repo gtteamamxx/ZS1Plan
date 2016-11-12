@@ -123,7 +123,7 @@ namespace ZS1Plan
                 //show last opened
                 if (ApplicationData.Current.LocalSettings.Values.ContainsKey("ShowTimetableAtStartup"))
                 {
-                    if ((int.Parse((string) ApplicationData.Current.LocalSettings.Values["ShowTimetableAtStartup"]) == 0))
+                    if ((int.Parse((string)ApplicationData.Current.LocalSettings.Values["ShowTimetableAtStartup"]) == 0))
                     {
                         numOfClassesTimeTables = -1;
                     }
