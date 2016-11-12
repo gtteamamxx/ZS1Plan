@@ -11,15 +11,16 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Documents;
 using Windows.UI.Xaml.Media;
+using Windows.UI.Xaml.Navigation;
 
 namespace ZS1Plan
 {
     public sealed partial class MainPage
     {
-        private static SchoolTimetable _timeTable = new SchoolTimetable();
+        public static SchoolTimetable TimeTable = new SchoolTimetable();
 
-        private static ObservableCollection<Timetable> TimeTableOfSections => _timeTable.timetablesOfClasses;
-        private static ObservableCollection<Timetable> TimeTableOfTeachers => _timeTable.timetableOfTeachers;
+        private static ObservableCollection<Timetable> TimeTableOfSections => TimeTable.TimetablesOfClasses;
+        private static ObservableCollection<Timetable> TimeTableOfTeachers => TimeTable.TimetableOfTeachers;
 
         private readonly string[] _dayNames = { "Nr", "Godz", "Poniedziałek", "Wtorek", "Środa", "Czwartek",
                                   "Piątek" };
@@ -29,15 +30,21 @@ namespace ZS1Plan
                                     "14:10 - 14:55", "15:00 - 15:45", "15:50 - 16:35" };
         private bool _isLoaded;
 
-        private static MainPage gui;
+        private static MainPage _gui;
 
-        public static void SetTitleText(string text) => gui.TitleText.Text = text;
-        
+        public static void SetTitleText(string text) => _gui.TitleText.Text = text;
+
+        public static Visibility InfoCenterStackPanelVisibility
+        {
+            get { return _gui.InfoCenterStackPanel.Visibility; }
+            set { _gui.InfoCenterStackPanel.Visibility = value; }
+        }
+
         public MainPage()
         {
             InitializeComponent();
 
-            gui = this;
+            _gui = this;
 
             if (ApiInformation.IsTypePresent("Windows.UI.ViewManagement.StatusBar"))
             {
@@ -48,17 +55,43 @@ namespace ZS1Plan
 
             Loaded += MainPage_Loaded;
 
-            Windows.Phone.UI.Input.HardwareButtons.BackPressed += (s, e) =>
+
+            if (ApiInformation.IsTypePresent("Windows.Phone.UI.Input.HardwareButtons"))
             {
-                if (SplitViewContentFrame.SourcePageType == typeof(SettingsPage))
+                BackButton.Visibility = Visibility.Collapsed;
+
+                Windows.Phone.UI.Input.HardwareButtons.BackPressed += (s, e) =>
                 {
-                    SplitViewContentScrollViewer.Visibility = Visibility.Visible;
-                    SplitViewContentFrame.Visibility = Visibility.Collapsed;
-                    e.Handled = true;
+                    e.Handled = GoBack();
+                };
+
+                return;
+            }
+
+            BackButton.Click += (s, e) =>
+            {
+                if (!GoBack())
+                {
+                    Application.Current.Exit();
                 }
             };
         }
 
+        private bool GoBack()
+        {
+            if (SplitViewContentFrame.Visibility == Visibility.Visible
+                && SplitViewContentFrame.SourcePageType == typeof(SettingsPage))
+            {
+                SplitViewContentScrollViewer.Visibility = Visibility.Visible;
+                SplitViewContentFrame.Visibility = Visibility.Collapsed;
+
+                TitleText.Text = "Plan lekcji" + (TimeTable.IdOfLastOpenedTimeTable == -1 ? "" : (" - " + TimeTable.GetLatestOpenedTimeTable().name));
+
+                return true;
+            }
+
+            return false;
+        }
         private async void MainPage_Loaded(object sender, RoutedEventArgs e)
         {
             // load
@@ -70,15 +103,35 @@ namespace ZS1Plan
 
                 InfoCenterText.Text = "Trwa wczytywanie planu zajęć...";
 
-                _timeTable = await DataServices.Deserialize();
+                TimeTable = await DataServices.Deserialize();
+
+                if (!TimeTable.TimetableOfTeachers.Any() || !TimeTable.TimetablesOfClasses.Any())
+                {
+                    InfoCenterProgressRing.Visibility = Visibility.Collapsed;
+                    TimeTable = new SchoolTimetable();
+                    DownloadTimeTables("Wystąpił problem podczas wczytywania planu lekcji, muisz pobrać go od nowa. Chcesz to zrobić teraz?");
+                    return;
+                }
 
                 MenuListViewOfSections.ItemsSource = TimeTableOfSections;
                 MenuListViewOfTeachers.ItemsSource = TimeTableOfTeachers;
 
                 InfoCenterProgressRing.Visibility = Visibility.Collapsed;
 
+                var numOfClassesTimeTables = TimeTable.IdOfLastOpenedTimeTable;
+
                 //show last opened
-                var numOfClassesTimeTables = _timeTable.idOfLastOpenedTimeTable;
+                if (ApplicationData.Current.LocalSettings.Values.ContainsKey("ShowTimetableAtStartup"))
+                {
+                    if ((int.Parse((string) ApplicationData.Current.LocalSettings.Values["ShowTimetableAtStartup"]) == 0))
+                    {
+                        numOfClassesTimeTables = -1;
+                    }
+                    else
+                    {
+                        numOfClassesTimeTables = 1;
+                    }
+                }
 
                 if (numOfClassesTimeTables == -1)
                 {
@@ -91,8 +144,8 @@ namespace ZS1Plan
 
                 InfoCenterStackPanel.Visibility = Visibility.Collapsed;
 
-                ShowTimeTable(_timeTable.GetLatestOpenedTimeTable() ?? _timeTable.timetablesOfClasses[0]);
-                
+                ShowTimeTable(TimeTable.GetLatestOpenedTimeTable());
+
                 _isLoaded = true;
                 return;
             }
@@ -106,6 +159,7 @@ namespace ZS1Plan
 
         private void DownloadTimeTables(string textToShowAtInfoCenter)
         {
+            SplitViewContentScrollViewer.Visibility = Visibility.Collapsed;
             InfoCenterStackPanel.Visibility = Visibility.Visible;
             InfoCenterButton.Visibility = Visibility.Visible;
 
@@ -142,7 +196,7 @@ namespace ZS1Plan
                     return;
                 }
 
-                if(!InfoCenterText.Text.Contains("zakończone"))
+                if (!InfoCenterText.Text.Contains("zakończone"))
                 {
                     InfoCenterText.Text = textToShowAtInfoCenter;
                 }
@@ -154,8 +208,8 @@ namespace ZS1Plan
 
                     InfoCenterText.Text = "Trwa synchronizowanie planu...";
 
-                    _timeTable.timetableOfTeachers = new ObservableCollection<Timetable>();
-                    _timeTable.timetablesOfClasses = new ObservableCollection<Timetable>();
+                    TimeTable.TimetableOfTeachers = new ObservableCollection<Timetable>();
+                    TimeTable.TimetablesOfClasses = new ObservableCollection<Timetable>();
 
                     if (!_isTimeTableDownloadedEventSubscribed)
                     {
@@ -163,19 +217,19 @@ namespace ZS1Plan
 
                         HtmlServices.OnTimeTableDownloaded += (timeTable, lenght) =>
                         {
-                            var numOfTimeTable = _timeTable.timetablesOfClasses.Count +
-                                                 _timeTable.timetableOfTeachers.Count();
+                            var numOfTimeTable = TimeTable.TimetablesOfClasses.Count +
+                                                 TimeTable.TimetableOfTeachers.Count();
 
                             if (timeTable.type == 0)
                             {
-                                _timeTable.timetablesOfClasses.Add(timeTable);
+                                TimeTable.TimetablesOfClasses.Add(timeTable);
                             }
                             else
                             {
-                                _timeTable.timetableOfTeachers.Add(timeTable);
+                                TimeTable.TimetableOfTeachers.Add(timeTable);
                             }
 
-                            var percentOfDownloadedTimeTables = (int) (0.5f + (++numOfTimeTable*100.0)/lenght);
+                            var percentOfDownloadedTimeTables = (int)(0.5f + (++numOfTimeTable * 100.0) / lenght);
                             InfoCenterText.Text = "[" + percentOfDownloadedTimeTables.ToString() + "%] Trwa dodawanie: " +
                                                   timeTable.name;
                         };
@@ -189,9 +243,9 @@ namespace ZS1Plan
                         {
                             InfoCenterText.Text = "Trwa zapisywanie planu zajęć...";
 
-                            _timeTable.idOfLastOpenedTimeTable = -1;
+                            TimeTable.IdOfLastOpenedTimeTable = -1;
 
-                            bool isPlanSerializedSuccesfullly = await DataServices.Serialize(_timeTable);
+                            bool isPlanSerializedSuccesfullly = await DataServices.Serialize(TimeTable);
 
                             InfoCenterText.Text = !isPlanSerializedSuccesfullly
                                 ? "Zapisywanie planu zajęć NIE POWIODŁO SIĘ. Spróbować ponownie?"
@@ -201,17 +255,17 @@ namespace ZS1Plan
                             InfoCenterProgressRing.Visibility = Visibility.Collapsed;
                         };
                     }
- 
+
                     if (_isLoaded)
                     {
                         InfoCenterStackPanel.Visibility = Visibility.Collapsed;
                         InfoCenterButton.Visibility = Visibility.Collapsed;
-                        ShowTimeTable(_timeTable.GetLatestOpenedTimeTable() ?? _timeTable.timetablesOfClasses[0]);
+                        ShowTimeTable(TimeTable.GetLatestOpenedTimeTable() ?? TimeTable.TimetablesOfClasses[0]);
                     }
 
-                    _timeTable = new SchoolTimetable();
+                    TimeTable = new SchoolTimetable();
                     await HtmlServices.GetData();
-                } 
+                }
                 else
                 {
                     _isLoaded = true;
@@ -225,13 +279,13 @@ namespace ZS1Plan
                 }
             };
         }
-        private async void ShowTimeTable(Timetable t)
+        private async void ShowTimeTable(Timetable t, bool quietChangedOfTimeTable = false)
         {
             if (InfoCenterStackPanel.Visibility == Visibility.Visible)
             {
                 InfoCenterStackPanel.Visibility = Visibility.Collapsed;
             }
-            if (SplitViewContentScrollViewer.Visibility == Visibility.Collapsed)
+            if (!quietChangedOfTimeTable && SplitViewContentScrollViewer.Visibility == Visibility.Collapsed)
             {
                 SplitViewContentScrollViewer.Visibility = Visibility.Visible;
                 SplitViewContentFrame.Visibility = Visibility.Collapsed;
@@ -239,10 +293,10 @@ namespace ZS1Plan
 
             var splitViewContentGrid = MenuSplitViewContentGrid;
 
-            var idOfTimeTable = t.type == 0 ? _timeTable.timetablesOfClasses.IndexOf(t) :
-                _timeTable.timetablesOfClasses.Count + _timeTable.timetableOfTeachers.IndexOf(t);
+            var idOfTimeTable = t.type == 0 ? TimeTable.TimetablesOfClasses.IndexOf(t) :
+                TimeTable.TimetablesOfClasses.Count + TimeTable.TimetableOfTeachers.IndexOf(t);
 
-            if (idOfTimeTable == _timeTable.idOfLastOpenedTimeTable && splitViewContentGrid.Children.Any())
+            if (!quietChangedOfTimeTable && idOfTimeTable == TimeTable.IdOfLastOpenedTimeTable && splitViewContentGrid.Children.Any())
                 return;
 
             var timeNow = DateTime.Now.TimeOfDay;
@@ -267,13 +321,12 @@ namespace ZS1Plan
                 return;
             }
 
-            TitleText.Text = "Plan lekcji - " + t.name;
+            if (!quietChangedOfTimeTable)
+                TitleText.Text = "Plan lekcji - " + t.name;
 
-            var actualTheme = ApplicationData.Current.LocalSettings.Values.ContainsKey("AppTheme")
-                ? (ApplicationTheme)int.Parse(ApplicationData.Current.LocalSettings.Values["AppTheme"] as string)
-                : ApplicationTheme.Light;
+            var actualTheme = Application.Current.RequestedTheme;
 
-            if (headerGrid.Children.FirstOrDefault(p => p is TextBlock) == null)
+            if (headerGrid.Children.FirstOrDefault(p => p is TextBlock && p != InfoCenterText) == null)
             {
                 headerGrid.Children.Add(new TextBlock()
                 {
@@ -287,15 +340,15 @@ namespace ZS1Plan
             }
             else
             {
-                ((TextBlock) headerGrid.Children.First(p => p is TextBlock)).Text = t.name;
+                ((TextBlock)headerGrid.Children.First(p => p is TextBlock && p != InfoCenterText)).Text = t.name;
             }
-            
+
             if (!splitViewContentGrid.Children.Any())
             {
                 for (var i = 0; i < 7; i++)
                 {
                     splitViewContentGrid.ColumnDefinitions.Add(
-                        new ColumnDefinition() { Width = GridLength.Auto } );
+                        new ColumnDefinition() { Width = GridLength.Auto });
 
                     var tx = new TextBlock()
                     {
@@ -379,7 +432,7 @@ namespace ZS1Plan
                                 });
                             }
 
-                            tx.Inlines.Add((new Run() {Text = lesson.lesson1Name ?? " ", FontWeight = FontWeights.Bold}));
+                            tx.Inlines.Add((new Run() { Text = lesson.lesson1Name ?? " ", FontWeight = FontWeights.Bold }));
 
                             if (string.IsNullOrEmpty(lesson.lesson1Tag))
                             {
@@ -437,15 +490,15 @@ namespace ZS1Plan
                     grid.BorderBrush = new SolidColorBrush(actualTheme == ApplicationTheme.Light ? Colors.Black : Colors.White);
                     grid.BorderThickness = new Thickness(1.0);
 
-                    if (i == actualLesson)
+                    if (SettingsPage.IsShowActiveLessonsToogleSwitchOn() && i == actualLesson)
                     {
                         grid.BorderThickness = new Thickness(2);
-                        grid.BorderBrush = new SolidColorBrush(Colors.Red);
+                        grid.BorderBrush = new SolidColorBrush(actualTheme == ApplicationTheme.Light ? Colors.Red : Colors.Yellow);
                     }
                     splitViewContentGrid.Children.Add(grid);
                 }
             }
-            
+
             /* Saving lastOpenedTimeTable */
             if (await SaveLastOpenedTimeTableToFile(idOfTimeTable) == false)
             {
@@ -466,17 +519,17 @@ namespace ZS1Plan
 
         private async Task<bool?> SaveLastOpenedTimeTableToFile(int idOfTimeTable)
         {
-            if (idOfTimeTable == _timeTable.idOfLastOpenedTimeTable)
+            if (idOfTimeTable == TimeTable.IdOfLastOpenedTimeTable)
             {
                 return null;
             }
 
-            _timeTable.idOfLastOpenedTimeTable = idOfTimeTable;
+            TimeTable.IdOfLastOpenedTimeTable = idOfTimeTable;
 
             int numOfTriesToSave = 3;
             do
             {
-            } while (!await DataServices.Serialize(_timeTable) && --numOfTriesToSave == 0);
+            } while (!await DataServices.Serialize(TimeTable) && --numOfTriesToSave == 0);
 
             return numOfTriesToSave > 0;
         }
@@ -526,7 +579,7 @@ namespace ZS1Plan
         private void MenuListView_ItemClick(object sender, ItemClickEventArgs e)
         {
             ShowTimeTable(e.ClickedItem as Timetable);
-        } 
+        }
 
         private void RefreshButton_Click(object sender, RoutedEventArgs e)
         {
@@ -534,11 +587,27 @@ namespace ZS1Plan
             DownloadTimeTables("Naciśnij przycisk OK, aby pobrać nowy plan zajęć.");
         }
 
+        private bool _isOnHighLightActiveLessonsToogleSwitchSubscribed;
+
         private void SettingsButton_Click(object sender, RoutedEventArgs e)
         {
-            SplitViewContentScrollViewer.Visibility = Visibility.Collapsed;
-            SplitViewContentFrame.Visibility = Visibility.Visible;
-            SplitViewContentFrame.Navigate(typeof(SettingsPage));
+
+            if (_isLoaded)
+            {
+                if (!_isOnHighLightActiveLessonsToogleSwitchSubscribed)
+                {
+                    _isOnHighLightActiveLessonsToogleSwitchSubscribed = true;
+
+                    SettingsPage.OnHighLightActiveLessonsChanged += () =>
+                    {
+                        ShowTimeTable(TimeTable.GetLatestOpenedTimeTable(), true);
+                    };
+                }
+
+                SplitViewContentScrollViewer.Visibility = Visibility.Collapsed;
+                SplitViewContentFrame.Visibility = Visibility.Visible;
+                SplitViewContentFrame.Navigate(typeof(SettingsPage));
+            }
         }
     }
 }

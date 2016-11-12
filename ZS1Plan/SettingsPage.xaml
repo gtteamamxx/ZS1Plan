@@ -8,25 +8,45 @@
     mc:Ignorable="d"
     NavigationCacheMode="Required">
 
+    <Page.Resources>
+
+        <Style x:Key="ToogleSwitchStyle" TargetType="ToggleSwitch">
+            <Setter Property="OnContent" Value="Włączono" />
+            <Setter Property="OffContent" Value="Wyłączono" />
+        </Style>
+        
+    </Page.Resources>
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Padding="20">
         
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <ToggleSwitch Name="NightModeToogleSwitch" 
-                      OnContent="Włączono" 
-                      OffContent="Wyłączono">
+                      Style="{ThemeResource ToogleSwitchStyle}">
 
             <TextBlock>Tryb nocny</TextBlock>
         </ToggleSwitch>
         
         <ToggleSwitch Grid.Row="1" 
                       Name="HighLightActualLessonToogleSwitch" 
-                      OnContent="Włączono" 
-                      OffContent="Wyłączono">
+                      Style="{ThemeResource ToogleSwitchStyle}">
             Podświetl aktualne lekcje
         </ToggleSwitch>
+
+        <ToggleSwitch Grid.Row="2"
+                      Name="ShowTimeTableAtStartupToogleSwitch"
+                      Style="{ThemeResource ToogleSwitchStyle}">
+            <TextBlock>Pokaż wybrany plan zajęć podczas uruchomienia</TextBlock>
+        </ToggleSwitch>
+
+        <ComboBox Grid.Row="2"
+                  Name="ShowTimeTableAtStartupComboBox"
+                  VerticalAlignment="Bottom"
+                  HorizontalAlignment="Right"
+                  SelectionChanged="ShowTimeTableAtStartupComboBox_SelectionChanged">
+        </ComboBox>
     </Grid>
 </Page>

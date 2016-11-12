@@ -4,44 +4,83 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Windows.Storage;
 
 namespace ZS1Plan
 {
     public class SchoolTimetable
     {
-        public ObservableCollection<Timetable> timetablesOfClasses { get; set; }
-        public ObservableCollection<Timetable> timetableOfTeachers { get; set; }
-        public int idOfLastOpenedTimeTable { get; set; }
+        public ObservableCollection<Timetable> TimetablesOfClasses { get; set; }
+        public ObservableCollection<Timetable> TimetableOfTeachers { get; set; }
+        public int IdOfLastOpenedTimeTable { get; set; }
 
         public SchoolTimetable()
         {
-            timetableOfTeachers = new ObservableCollection<Timetable>();
-            timetablesOfClasses = new ObservableCollection<Timetable>();
+            TimetableOfTeachers = new ObservableCollection<Timetable>();
+            TimetablesOfClasses = new ObservableCollection<Timetable>();
         }
 
+        public List<Timetable> GetAllTimeTables()
+        {
+            var listOfTimeTables = TimetablesOfClasses.ToList();
+            listOfTimeTables.AddRange(TimetableOfTeachers);
+            return listOfTimeTables;
+        }
+
+        public void SetLastOpenedTimeTable(Timetable t)
+        {
+            if (t == null)
+            {
+                return;
+            }
+
+            int idOfTimeTable = TimetablesOfClasses.IndexOf(t);
+
+            if (idOfTimeTable == -1)
+            {
+                idOfTimeTable = TimetablesOfClasses.Count + TimetableOfTeachers.IndexOf(t);
+            }
+
+            IdOfLastOpenedTimeTable = idOfTimeTable;
+        }
         public Timetable GetLatestOpenedTimeTable()
         {
-            if (idOfLastOpenedTimeTable == -1)
+            var lastOpenedTimetable = new Timetable();
+
+            if (IdOfLastOpenedTimeTable != -1)
             {
-                return null;
+                int idOfTimeTable;
+
+                var numOfClassesTimeTables = TimetablesOfClasses.Count;
+
+                var type = 0;
+                if (IdOfLastOpenedTimeTable < numOfClassesTimeTables)
+                {
+                    idOfTimeTable = IdOfLastOpenedTimeTable;
+                }
+                else
+                {
+                    idOfTimeTable = IdOfLastOpenedTimeTable - numOfClassesTimeTables;
+                    type = 1;
+                }
+                lastOpenedTimetable = type == 0 ? TimetablesOfClasses[idOfTimeTable] : TimetableOfTeachers[idOfTimeTable];
             }
 
-            int idOfTimeTable;
-
-            var numOfClassesTimeTables = timetablesOfClasses.Count;
-
-            var type = 0;
-            if (idOfLastOpenedTimeTable < numOfClassesTimeTables)
+            if (ApplicationData.Current.LocalSettings.Values.ContainsKey("ShowTimetableAtStartupSelectedPlan"))
             {
-                idOfTimeTable = idOfLastOpenedTimeTable;
-            }
-            else
-            {
-                idOfTimeTable = idOfLastOpenedTimeTable - numOfClassesTimeTables;
-                type = 1;
-            }
+                var nameOfLastSelectedPlan =
+                    ApplicationData.Current.LocalSettings.Values["ShowTimetableAtStartupSelectedPlan"] as string;
 
-            return type == 0 ? timetablesOfClasses[idOfTimeTable] : timetableOfTeachers[idOfTimeTable];
+                if (nameOfLastSelectedPlan != "")
+                {
+                    var lot = GetAllTimeTables().FirstOrDefault(p => p.name == nameOfLastSelectedPlan);
+                    if (lot != null)
+                    {
+                        lastOpenedTimetable = lot;
+                    }
+                }
+            }
+            return lastOpenedTimetable;
         }
     }
     public class Timetable
