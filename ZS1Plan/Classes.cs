@@ -26,11 +26,15 @@ namespace ZS1Plan
             listOfTimeTables.AddRange(TimetableOfTeachers);
             return listOfTimeTables;
         }
-
+        /// <summary>
+        /// Get latest opened Timetable
+        /// </summary>
+        /// <returns>latest opened timetable, or null if there is not any other timetable</returns>
         public Timetable GetLatestOpenedTimeTable()
         {
-            var lastOpenedTimetable = new Timetable();
+            Timetable lastOpenedTimetable = null;
 
+            //First we want to check, if we have any id id class memory
             if (IdOfLastOpenedTimeTable != -1)
             {
                 int idOfTimeTable;
@@ -38,6 +42,8 @@ namespace ZS1Plan
                 var numOfClassesTimeTables = TimetablesOfClasses.Count;
 
                 var type = 0;
+
+                //we want to translate absolute id to id of Class or id of Teachers
                 if (IdOfLastOpenedTimeTable < numOfClassesTimeTables)
                 {
                     idOfTimeTable = IdOfLastOpenedTimeTable;
@@ -47,21 +53,27 @@ namespace ZS1Plan
                     idOfTimeTable = IdOfLastOpenedTimeTable - numOfClassesTimeTables;
                     type = 1;
                 }
+
+                //type=0 -> class
+                //type=1 -> teacher
                 lastOpenedTimetable = type == 0 ? TimetablesOfClasses[idOfTimeTable] : TimetableOfTeachers[idOfTimeTable];
             }
 
-            if (ApplicationData.Current.LocalSettings.Values.ContainsKey("ShowTimetableAtStartupSelectedPlan"))
+            //then, we want to check if there is any latest selected plan
+            //in application memory
+            //application memory is highest priority than a class memory
+            if (ApplicationData.Current.LocalSettings.Values.ContainsKey("ShowTimetableAtStartup")
+                && (int.Parse(ApplicationData.Current.LocalSettings.Values["ShowTimetableAtStartup"] as string)) == 1 
+                && ApplicationData.Current.LocalSettings.Values.ContainsKey("ShowTimetableAtStartupSelectedPlan"))
             {
                 var nameOfLastSelectedPlan =
                     ApplicationData.Current.LocalSettings.Values["ShowTimetableAtStartupSelectedPlan"] as string;
 
-                if (nameOfLastSelectedPlan != "")
+                var lot = GetAllTimeTables().FirstOrDefault(p => p.name == nameOfLastSelectedPlan);
+
+                if (lot != null)
                 {
-                    var lot = GetAllTimeTables().FirstOrDefault(p => p.name == nameOfLastSelectedPlan);
-                    if (lot != null)
-                    {
-                        lastOpenedTimetable = lot;
-                    }
+                    lastOpenedTimetable = lot;
                 }
             }
             return lastOpenedTimetable;

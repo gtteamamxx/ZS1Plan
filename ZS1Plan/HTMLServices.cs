@@ -20,6 +20,11 @@ namespace ZS1Plan
         public static event TimeTableDownloaded OnTimeTableDownloaded;
         public static event AllTimeTablesDownloaed OnAllTimeTablesDownloaded;
 
+        /// <summary>
+        /// Gets a source code of site
+        /// </summary>
+        /// <param name="url">url adress</param>
+        /// <returns>source code of site</returns>
         private static async Task<string> GetSource(string url)
         {
             var http = new HttpClient();
@@ -34,6 +39,10 @@ namespace ZS1Plan
             OnAllTimeTablesDownloaded?.Invoke();
         }
 
+        /// <summary>
+        /// Gets list of timetables from site
+        /// </summary>
+        /// <returns></returns>
         public static async Task GetData()
         {
             var parser = new HtmlParser();
@@ -47,6 +56,9 @@ namespace ZS1Plan
             InvokeAllTimeTableDownloaded();
         }
 
+        /// <summary>
+        /// Downloads info about timetables
+        /// </summary>
         private static async Task FormatClasses(int listOfTeachersElementsNum, IElement listOfClasses)
         {
             for (var i = 0; i < listOfClasses.Children.Count(); i++)
@@ -65,6 +77,7 @@ namespace ZS1Plan
                     days = new List<Day>()
                 };
 
+                //iterates for 5 days 
                 for (var d = 0; d < 5; d++)
                 {
                     var day = new Day { Lessons = new List<Lesson>() };
@@ -75,6 +88,7 @@ namespace ZS1Plan
                         // 2, because 0 is h'our number, 1 is a ring time (eg. 7:10 -> xxx )
                         var item = listOfHours[h].Children[2 + d];
 
+                        //if there is not any lesson
                         if (item.InnerHtml == NoLessonString)
                         {
                             day.Lessons.Add(lesson);
@@ -84,6 +98,8 @@ namespace ZS1Plan
                         var spanList = item.QuerySelectorAll("span");
                         lesson.lesson1Name = spanList.First(p => p.ClassName == "p").TextContent;
 
+                        //sometimes, a class dont have a number of group in p.ClassName.TextContent
+                        //so we have to check it manually
                         if (!lesson.lesson1Name.Contains("1/2") && !lesson.lesson1Name.Contains("2/2"))
                             lesson.lesson1Name += (item.TextContent.Contains("1/2") ? "-1/2" : item.TextContent.Contains("2/2") ? "-2/2" : "");
 
@@ -102,6 +118,8 @@ namespace ZS1Plan
                             lesson.lesson1TagHref = adressList.First().GetAttribute("href");
                         }
 
+                        //sometimes model was other from main model,so we have to
+                        //check all configuration and put it in right place
                         if (spanList.Count(p => p.ClassName == "p") == 2 && (spanList.Count(p => p.ClassName == "s") == 2))
                         {
                             lesson.lesson2Name = spanList.Where(p => p.ClassName == "p").ToList()[1].TextContent;
@@ -182,6 +200,7 @@ namespace ZS1Plan
                         lesson.lesson1Place = spanList.First(p => p.ClassName == "s").TextContent;
 
                         var adressList = item.QuerySelectorAll("a");
+
                         if (adressList.Count() > 1)
                         {
                             var outerHtml = item.OuterHtml;
