@@ -17,15 +17,15 @@ namespace ZS1Plan
         {
             var xmlSerializer = new XmlSerializer(typeof(SchoolTimetable));
 
-            if (!File.Exists(Path.Combine(LocalFolder.Path, planFileName)))
+            if (!IsFileExists())
             {
                 return null;
             }
 
-            var fileToRead = await LocalFolder.GetFileAsync(planFileName);
-
             try
             {
+                var fileToRead = await LocalFolder.GetFileAsync(planFileName);
+
                 using (var textReader = new StringReader(await FileIO.ReadTextAsync(fileToRead)))
                 {
                     return (SchoolTimetable) xmlSerializer.Deserialize(textReader);
@@ -47,13 +47,27 @@ namespace ZS1Plan
 
                 StorageFile fileToSave;
 
-                if (!File.Exists(Path.Combine(LocalFolder.Path, planFileName)))
+                if (!IsFileExists())
                 {
-                    fileToSave = await LocalFolder.CreateFileAsync(planFileName);
+                    try
+                    {
+                        fileToSave = await LocalFolder.CreateFileAsync(planFileName);
+                    }
+                    catch
+                    {
+                        fileToSave = null;
+                    }
                 }
                 else
                 {
-                    fileToSave = await LocalFolder.GetFileAsync(planFileName);
+                    try
+                    {
+                        fileToSave = await LocalFolder.GetFileAsync(planFileName);
+                    }
+                    catch
+                    {
+                        fileToSave = null;
+                    }
                 }
 
                 if (fileToSave == null)

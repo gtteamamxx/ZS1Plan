@@ -96,16 +96,21 @@ namespace ZS1Plan
                         }
 
                         var spanList = item.QuerySelectorAll("span");
-                        lesson.lesson1Name = spanList.First(p => p.ClassName == "p").TextContent;
+                        var adressList = item.QuerySelectorAll("a");
+                        var pList = spanList.Where(p => p.ClassName == "p").ToList();
+                        var sList = spanList.Where(p => p.ClassName == "s").ToList();
+
+                        lesson.lesson1Name = pList.First().TextContent;
+                        lesson.lesson1Place = sList.First().TextContent;
 
                         //sometimes, a class dont have a number of group in p.ClassName.TextContent
                         //so we have to check it manually
                         if (!lesson.lesson1Name.Contains("1/2") && !lesson.lesson1Name.Contains("2/2"))
-                            lesson.lesson1Name += (item.TextContent.Contains("1/2") ? "-1/2" : item.TextContent.Contains("2/2") ? "-2/2" : "");
-
-                        lesson.lesson1Place = spanList.First(p => p.ClassName == "s").TextContent;
-
-                        var adressList = item.QuerySelectorAll("a");
+                        {
+                            lesson.lesson1Name += (item.TextContent.Contains("1/2")
+                                ? "-1/2"
+                                : item.TextContent.Contains("2/2") ? "-2/2" : "");
+                        }
 
                         if (adressList.Count() == 0)
                         {
@@ -120,36 +125,45 @@ namespace ZS1Plan
 
                         //sometimes model was other from main model,so we have to
                         //check all configuration and put it in right place
-                        if (spanList.Count(p => p.ClassName == "p") == 2 && (spanList.Count(p => p.ClassName == "s") == 2))
+                        if (sList.Count == 2)
                         {
-                            lesson.lesson2Name = spanList.Where(p => p.ClassName == "p").ToList()[1].TextContent;
-                            lesson.lesson2Place = spanList.Where(p => p.ClassName == "s").ToList()[1].TextContent;
-                            lesson.lesson2Tag = adressList.Where(p => p.ClassName == "n").ToList()[1].TextContent;
-                            lesson.lesson2TagHref = adressList[1].GetAttribute("href");
-                        }
-                        else if (spanList.Count(p => p.ClassName == "p") == 4 && (spanList.Count(p => p.ClassName == "s") == 2))
-                        {
-                            lesson.lesson2Name = spanList.Where(p => p.ClassName == "p").ToList()[2].TextContent;
-                            lesson.lesson2Place = spanList.Where(p => p.ClassName == "s").ToList()[1].TextContent;
-                            lesson.lesson2Tag = spanList.Where(p => p.ClassName == "p").ToList()[3].TextContent;
-                            lesson.lesson2TagHref = "";
-                        }
-                        else if (spanList.Count(p => p.ClassName == "p") == 3 && (spanList.Count(p => p.ClassName == "s") == 2))
-                        {
-                            lesson.lesson2Name = spanList.Where(p => p.ClassName == "p").ToList()[1].TextContent;
+                            string name = "";
+                            string tag = "";
+                            string taghref = "";
 
-                            if (!lesson.lesson2Name.Contains("1/2") || !lesson.lesson2Name.Contains("2/2"))
+                            switch (pList.Count)
                             {
-                                int positionOfLesson2Name = item.TextContent.IndexOf(lesson.lesson2Name, StringComparison.Ordinal);
-                                var substring = item.TextContent.Substring(positionOfLesson2Name, item.TextContent.Length - positionOfLesson2Name);
-                                lesson.lesson2Name += substring.Contains("1/2") ? "-1/2" : substring.Contains("2/2") ? "-2/2" : "";
+                                case 2:
+                                    name = pList[1].TextContent;
+                                    tag = adressList.Where(p => p.ClassName == "n").ToList()[1].TextContent;
+                                    taghref = adressList[1].GetAttribute("href");
+                                    break;
+                                case 3:
+                                    name = sList[1].TextContent;
+
+                                    if (!name.Contains("1/2") || !name.Contains("2/2"))
+                                    {
+                                        int positionOfLesson2Name = item.TextContent.IndexOf(name, StringComparison.Ordinal);
+                                        var substring = item.TextContent.Substring(positionOfLesson2Name, item.TextContent.Length - positionOfLesson2Name);
+                                        name += substring.Contains("1/2") ? "-1/2" : substring.Contains("2/2") ? "-2/2" : "";
+                                    }
+
+                                    tag = pList[2].TextContent;
+                                    break;
+                                case 4:
+                                    name = pList[2].TextContent;
+                                    tag = pList[3].TextContent;
+                                    break;
+                                default:
+                                    name = "error";
+                                    break;
                             }
 
-                            lesson.lesson2Place = spanList.Where(p => p.ClassName == "s").ToList()[1].TextContent;
-                            lesson.lesson2Tag = spanList.Where(p => p.ClassName == "p").ToList()[2].TextContent;
-                            lesson.lesson2TagHref = "";
+                            lesson.lesson2Name = name;
+                            lesson.lesson2Place = sList[1].TextContent;
+                            lesson.lesson2Tag = tag;
+                            lesson.lesson2TagHref = taghref;
                         }
-
                         day.Lessons.Add(lesson);
                     }
 
@@ -208,19 +222,29 @@ namespace ZS1Plan
 
                             foreach (var adressElement in adressList)
                             {
-                                int indexOfAdressElementInString = outerHtml.IndexOf(adressElement.OuterHtml, StringComparison.Ordinal);
+                                int indexOfAdressElementInString = outerHtml.IndexOf(adressElement.OuterHtml,
+                                    StringComparison.Ordinal);
 
                                 fullString += adressElement.TextContent +
-                                   outerHtml.Substring(indexOfAdressElementInString + adressElement.OuterHtml.Length, 5).Trim();
+                                              outerHtml.Substring(indexOfAdressElementInString + adressElement.OuterHtml.Length, 5)
+                                                  .Trim();
                             }
 
                             if (fullString[fullString.Length - 1] == ',')
+                            {
                                 fullString = fullString.Remove(fullString.Length - 1, 1);
+                            }
 
                             lesson.lesson2Name = fullString;
                         }
                         else
-                            lesson.lesson2Name = adressList.First().TextContent + ((item.TextContent.Contains("1/2")) ? "-1/2" : item.TextContent.Contains("2/2") ? "-2/2" : "");
+                        {
+                            lesson.lesson2Name = adressList.First().TextContent +
+                                                 ((item.TextContent.Contains("1/2"))
+                                                     ? "-1/2"
+                                                     : item.TextContent.Contains("2/2") ? "-2/2" : "");
+                        }
+
                         lesson.lesson1TagHref = adressList.First().GetAttribute("href");
 
                         day.Lessons.Add(lesson);

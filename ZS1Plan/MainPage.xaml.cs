@@ -11,7 +11,6 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Documents;
 using Windows.UI.Xaml.Media;
-using Windows.UI.Xaml.Navigation;
 
 namespace ZS1Plan
 {
@@ -38,8 +37,14 @@ namespace ZS1Plan
 
         public static Visibility InfoCenterStackPanelVisibility
         {
-            get { return _gui.InfoCenterStackPanel.Visibility; }
-            set { _gui.InfoCenterStackPanel.Visibility = value; }
+            get
+            {
+                return _gui.InfoCenterStackPanel.Visibility;
+            }
+            set
+            {
+                _gui.InfoCenterStackPanel.Visibility = value;
+            }
         }
 
         public MainPage()
@@ -84,18 +89,17 @@ namespace ZS1Plan
         private bool GoBack()
         {
             //if settings page is opened
-            if (SplitViewContentFrame.Visibility == Visibility.Visible
-                && SplitViewContentFrame.SourcePageType == typeof(SettingsPage))
+            if (SplitViewContentFrame.Visibility != Visibility.Visible ||
+                SplitViewContentFrame.SourcePageType != typeof(SettingsPage))
             {
-                SplitViewContentScrollViewer.Visibility = Visibility.Visible;
-                SplitViewContentFrame.Visibility = Visibility.Collapsed;
-
-                TitleText.Text = "Plan lekcji" + (TimeTable.IdOfLastOpenedTimeTable == -1 ? "" : (" - " + TimeTable.GetLatestOpenedTimeTable().name));
-
-                return true;
+                return false;
             }
+            SplitViewContentScrollViewer.Visibility = Visibility.Visible;
+            SplitViewContentFrame.Visibility = Visibility.Collapsed;
 
-            return false;
+            TitleText.Text = "Plan lekcji" + (TimeTable.IdOfLastOpenedTimeTable == -1 ? "" : (" - " + TimeTable.GetLatestOpenedTimeTable().name));
+
+            return true;
         }
         /// <summary>
         /// Loads plan
@@ -141,7 +145,9 @@ namespace ZS1Plan
                 }
 
                 //if user dont want to show last timetable or no one are sets
-                if (numOfClassesTimeTables == -1)
+                var lastTimetable = TimeTable.GetLatestOpenedTimeTable();
+
+                if (numOfClassesTimeTables == -1 || lastTimetable == null)
                 {
                     InfoCenterText.Text = "Naciśnij przycisk menu u góry i wybierz interesujący Cię plan zajęć.";
                     InfoCenterButton.Visibility = Visibility.Collapsed;
@@ -152,7 +158,7 @@ namespace ZS1Plan
 
                 InfoCenterStackPanel.Visibility = Visibility.Collapsed;
 
-                await ShowTimeTableAsync(TimeTable.GetLatestOpenedTimeTable());
+                await ShowTimeTableAsync(lastTimetable);
 
                 _isLoaded = true;
                 return;
@@ -481,7 +487,7 @@ namespace ZS1Plan
                                 });
                             }
 
-                            tx.Inlines.Add(new Run() { Text = lesson.lesson1Name, FontWeight = FontWeights.Bold });
+                            tx.Inlines.Add(new Run() { Text = lesson.lesson1Name ?? "", FontWeight = FontWeights.Bold });
 
                             //if lesson1Tag (is a Teachertag) is not available, then
                             //skip it, else show full format
@@ -615,6 +621,9 @@ namespace ZS1Plan
             }
         }
 
+        /// <summary>
+        /// Menu open click event
+        /// </summary>
         private void MenuButton_Click(object sender, RoutedEventArgs e)
         {
             if (_isLoaded)
@@ -670,7 +679,7 @@ namespace ZS1Plan
         /// <summary>
         /// Opens settings page
         /// </summary>
-        private async void SettingsButton_Click(object sender, RoutedEventArgs e)
+        private void SettingsButton_Click(object sender, RoutedEventArgs e)
         {
             if (_isLoaded)
             {
