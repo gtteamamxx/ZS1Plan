@@ -36,13 +36,12 @@ namespace ZS1Plan
             //cached in memory
             NightModeToogleSwitch.Toggled += (s, e) =>
             {
-                if (ApplicationData.Current.LocalSettings.Values.ContainsKey("AppTheme"))
+                if (LocalSettingsServices.AppTheme.ContainsKey())
                 {
-                    ApplicationData.Current.LocalSettings.Values.Remove("AppTheme");
+                    LocalSettingsServices.AppTheme.RemoveKey();
                 }
 
-                ApplicationData.Current.LocalSettings.Values.Add("AppTheme",
-                    Application.Current.RequestedTheme == ApplicationTheme.Dark ? ((int)ApplicationTheme.Light).ToString() : ((int)ApplicationTheme.Dark).ToString());
+                LocalSettingsServices.AppTheme.AddKey(Application.Current.RequestedTheme);
 
                 //we are looking for a text block of this toogleswitch
                 var headerTextBlock = ((TextBlock)NightModeToogleSwitch.Header);
@@ -57,13 +56,12 @@ namespace ZS1Plan
 
             HighLightActualLessonToogleSwitch.Toggled += (s, e) =>
             {
-                if (ApplicationData.Current.LocalSettings.Values.ContainsKey("ShowActiveLessons"))
+                if (LocalSettingsServices.ShowActiveLesson.ContainsKey())
                 {
-                    ApplicationData.Current.LocalSettings.Values.Remove("ShowActiveLessons");
+                    LocalSettingsServices.ShowActiveLesson.RemoveKey();
                 }
 
-                ApplicationData.Current.LocalSettings.Values.Add("ShowActiveLessons",
-                    HighLightActualLessonToogleSwitch.IsOn ? "1" : "0");
+                LocalSettingsServices.ShowActiveLesson.AddKey(HighLightActualLessonToogleSwitch.IsOn);
 
                 //we have to call a MainPage, which have to quiet change
                 //a timetable depends of this option above
@@ -72,42 +70,13 @@ namespace ZS1Plan
 
             ShowTimeTableAtStartupToogleSwitch.Toggled += (s, e) =>
             {
-                /*//If we changed a isOn from true to false, then
-                //we have to only save a button value
-                if (ShowTimeTableAtStartupToogleSwitch.IsOn == false)
+                if (LocalSettingsServices.ShowTimetableAtStartup.ContainsKey())
                 {
-                    if (ApplicationData.Current.LocalSettings.Values.ContainsKey("ShowTimetableAtStartup"))
-                    {
-                        ApplicationData.Current.LocalSettings.Values.Remove("ShowTimetableAtStartup");
-                    }
-
-                    ApplicationData.Current.LocalSettings.Values.Add("ShowTimetableAtStartup",
-                        ShowTimeTableAtStartupToogleSwitch.IsOn ? "1" : "0");
-                }
-                else// if we just changed IsOn from False to true, we have to
-                {   //
-                    if (ApplicationData.Current.LocalSettings.Values.ContainsKey("ShowTimetableAtStartupSelectedPlan"))
-                    {
-                        if ((string)ApplicationData.Current.LocalSettings.Values["ShowTimetableAtStartupSelectedPlan"] != "")
-                        {
-                            if (ApplicationData.Current.LocalSettings.Values.ContainsKey("ShowTimetableAtStartup"))
-                            {
-                                ApplicationData.Current.LocalSettings.Values.Remove("ShowTimetableAtStartup");
-                            }
-
-                            ApplicationData.Current.LocalSettings.Values.Add("ShowTimetableAtStartup",
-                                ShowTimeTableAtStartupToogleSwitch.IsOn ? "1" : "0");
-                        }
-                    }
-                }*/
-
-                if (ApplicationData.Current.LocalSettings.Values.ContainsKey("ShowTimetableAtStartup"))
-                {
-                    ApplicationData.Current.LocalSettings.Values.Remove("ShowTimetableAtStartup");
+                    LocalSettingsServices.ShowTimetableAtStartup.RemoveKey();
                 }
 
-                ApplicationData.Current.LocalSettings.Values.Add("ShowTimetableAtStartup",
-                    ShowTimeTableAtStartupToogleSwitch.IsOn ? "1" : "0");
+                LocalSettingsServices.ShowTimetableAtStartup.AddKey(HighLightActualLessonToogleSwitch.IsOn);
+
 
                 ShowTimeTableAtStartupComboBox.Visibility = ShowTimeTableAtStartupToogleSwitch.IsOn ? Visibility.Visible : Visibility.Collapsed;
             };
@@ -118,8 +87,8 @@ namespace ZS1Plan
         /// </summary>
         private void CheckIfNightModeToogleSwitchShoudBeOn()
         {
-            NightModeToogleSwitch.IsOn = ApplicationData.Current.LocalSettings.Values.ContainsKey("AppTheme")
-                 && ((int.Parse((ApplicationData.Current.LocalSettings.Values["AppTheme"] as string))) == 1);
+            NightModeToogleSwitch.IsOn = LocalSettingsServices.AppTheme.ContainsKey()
+                 && (int.Parse(LocalSettingsServices.AppTheme.GetKeyValue()) == 1);
         }
         /// <summary>
         /// Sets a IsOn value to HighLightActualLessonToogleSwitch
@@ -127,39 +96,37 @@ namespace ZS1Plan
         private void CheckIfShowActiveLessonsToogleSwitchShouldBeOn()
         {
             //if there isnt a value, then set a default value to 1
-            if (!ApplicationData.Current.LocalSettings.Values.ContainsKey("ShowActiveLessons"))
+            if (!LocalSettingsServices.ShowActiveLesson.ContainsKey())
             {
-                ApplicationData.Current.LocalSettings.Values.Add("ShowActiveLessons", "1");
+                LocalSettingsServices.ShowActiveLesson.AddKey();
             }
-            HighLightActualLessonToogleSwitch.IsOn = ApplicationData.Current.LocalSettings.Values.ContainsKey("ShowActiveLessons") &&
-                   (int.Parse(ApplicationData.Current.LocalSettings.Values["ShowActiveLessons"] as string) == 1);
+            HighLightActualLessonToogleSwitch.IsOn = int.Parse(LocalSettingsServices.ShowActiveLesson.GetKeyValue()) == 1;
 
         }
 
         public static bool IsShowActiveLessonsToogleSwitchOn()
         {
             return _gui?.HighLightActualLessonToogleSwitch.IsOn ??
-                (ApplicationData.Current.LocalSettings.Values.ContainsKey("ShowActiveLessons") &&
-                (int.Parse(ApplicationData.Current.LocalSettings.Values["ShowActiveLessons"] as string) == 1));
+                LocalSettingsServices.ShowActiveLesson.ContainsKey() &&
+                int.Parse(LocalSettingsServices.ShowActiveLesson.GetKeyValue()) == 1;
         }
 
         private void CheckIfShowTimetableAtStartupToogleSwitchShouldBeOn()
         {
             //sets default values
-            if (!ApplicationData.Current.LocalSettings.Values.ContainsKey("ShowTimetableAtStartup"))
+            if (!LocalSettingsServices.ShowTimetableAtStartup.ContainsKey())
             {
-                ApplicationData.Current.LocalSettings.Values.Add("ShowTimetableAtStartup", "0");
+                LocalSettingsServices.ShowTimetableAtStartup.AddKey(true);
             }
-            if (!ApplicationData.Current.LocalSettings.Values.ContainsKey("ShowTimetableAtStartupSelectedPlan"))
+            if (!LocalSettingsServices.ShowTimetableAtStartupValue.ContainsKey())
             {
-                ApplicationData.Current.LocalSettings.Values.Add("ShowTimetableAtStartupSelectedPlan", "");
+                LocalSettingsServices.ShowTimetableAtStartupValue.AddKey("");
             }
 
-            ShowTimeTableAtStartupToogleSwitch.IsOn = ApplicationData.Current.LocalSettings.Values.ContainsKey("ShowTimetableAtStartup") &&
-                   (int.Parse(ApplicationData.Current.LocalSettings.Values["ShowTimetableAtStartup"] as string) == 1);
+            ShowTimeTableAtStartupToogleSwitch.IsOn = int.Parse(LocalSettingsServices.ShowTimetableAtStartup.GetKeyValue()) == 1;
 
             //fill a ComboBox.Items with names of timetables
-            foreach (var t in MainPage.TimeTable.GetAllTimeTables())
+            foreach (var t in Timetable.GetAllTimeTables(MainPage.TimeTable))
             {
                 ShowTimeTableAtStartupComboBox.Items.Add(t.name);
             }
@@ -171,8 +138,7 @@ namespace ZS1Plan
             {
                 ShowTimeTableAtStartupComboBox.Visibility = Visibility.Visible;
 
-                var nameOfSelectedItemInComboBox =
-                    (string)ApplicationData.Current.LocalSettings.Values["ShowTimetableAtStartupSelectedPlan"];
+                var nameOfSelectedItemInComboBox = LocalSettingsServices.ShowTimetableAtStartupValue.GetKeyValue();
 
                 if (nameOfSelectedItemInComboBox == "" || ShowTimeTableAtStartupComboBox.Items == null)
                 {
@@ -223,20 +189,19 @@ namespace ZS1Plan
                                         "Po każdej aktualizacji planu, będziesz musiał ustawić tę opcję ponownie.";
             }
 
-            if (ApplicationData.Current.LocalSettings.Values.ContainsKey("ShowTimetableAtStartup"))
+            if (LocalSettingsServices.ShowTimetableAtStartup.ContainsKey())
             {
-                ApplicationData.Current.LocalSettings.Values.Remove("ShowTimetableAtStartup");
+                LocalSettingsServices.ShowTimetableAtStartup.RemoveKey();
             }
 
-            ApplicationData.Current.LocalSettings.Values.Add("ShowTimetableAtStartup",
-                ShowTimeTableAtStartupToogleSwitch.IsOn ? "1" : "0");
+            LocalSettingsServices.ShowTimetableAtStartup.AddKey(ShowTimeTableAtStartupToogleSwitch.IsOn);
 
             var selectedTimeTable =
-                MainPage.TimeTable.GetAllTimeTables()
+                Timetable.GetAllTimeTables(MainPage.TimeTable)
                     .Find(p => p.name == (ShowTimeTableAtStartupComboBox.SelectedItem as string));
 
-            ApplicationData.Current.LocalSettings.Values.Remove("ShowTimetableAtStartupSelectedPlan");
-            ApplicationData.Current.LocalSettings.Values.Add("ShowTimetableAtStartupSelectedPlan", selectedTimeTable.name);
+            LocalSettingsServices.ShowTimetableAtStartupValue.RemoveKey();
+            LocalSettingsServices.ShowTimetableAtStartupValue.AddKey(selectedTimeTable.name);
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)

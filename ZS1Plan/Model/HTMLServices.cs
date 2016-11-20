@@ -170,7 +170,7 @@ namespace ZS1Plan
                     timetable.days.Add(day);
                 }
 
-                timetable.type = 0;
+                timetable.type = Lesson.LessonType.Class;
                 OnTimeTableDownloaded?.Invoke(timetable, listOfClasses.Children.Count() + listOfTeachersElementsNum);
             }
         }
@@ -253,7 +253,7 @@ namespace ZS1Plan
                     timetable.days.Add(day);
                 }
 
-                timetable.type = 1;
+                timetable.type = Lesson.LessonType.Teacher;
                 OnTimeTableDownloaded?.Invoke(timetable, classesTimetablesNum + listOfTeachers.Children.Count());
             }
         }

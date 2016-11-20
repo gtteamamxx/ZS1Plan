@@ -29,8 +29,10 @@ namespace ZS1Plan
         /// </summary>
         public App()
         {
-            var appTheme = ApplicationData.Current.LocalSettings.Values.ContainsKey("AppTheme")
-                ? ApplicationData.Current.LocalSettings.Values["AppTheme"]
+            new LocalSettingsServices();
+
+            var appTheme = LocalSettingsServices.AppTheme.ContainsKey()
+                ? LocalSettingsServices.AppTheme.GetKeyValue()
                 : null;
 
             this.RequestedTheme = appTheme == null ? ApplicationTheme.Light : (ApplicationTheme) int.Parse(appTheme as string);

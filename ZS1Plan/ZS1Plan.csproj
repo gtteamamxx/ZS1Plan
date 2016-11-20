@@ -95,12 +95,17 @@
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Classes.cs" />
-    <Compile Include="DataServices.cs" />
-    <Compile Include="HTMLServices.cs" />
+    <Compile Include="Model\FlyoutHelper.cs" />
+    <Compile Include="Model\LocalSettingsServices.cs" />
+    <Compile Include="Model\SchoolTimetable.cs" />
+    <Compile Include="Model\DataServices.cs" />
+    <Compile Include="Model\Day.cs" />
+    <Compile Include="Model\HTMLServices.cs" />
     <Compile Include="MainPage.xaml.cs">
       <DependentUpon>MainPage.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Model\Lesson.cs" />
+    <Compile Include="Model\Timetable.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SettingsPage.xaml.cs">
       <DependentUpon>SettingsPage.xaml</DependentUpon>

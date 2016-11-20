@@ -13,6 +13,40 @@ namespace ZS1Plan
 
         public static bool IsFileExists() => File.Exists(Path.Combine(LocalFolder.Path, planFileName));
 
+        /// <summary>
+        /// Saves last opened timetable to file
+        /// </summary>
+        /// <param name="idOfTimeTable">Absolute id of Timetable</param>
+        /// <param name="st">SchoolTimetable instance</param>
+        /// <returns>
+        /// null if latest opened timetable is same as idofTimetable, 
+        /// false if there was an error, true if saving was completed succesfully
+        /// </returns>
+        public static async Task<bool?> SaveLastOpenedTimeTableToFile(int idOfTimeTable, SchoolTimetable st)
+        {
+            if (idOfTimeTable == st.IdOfLastOpenedTimeTable)
+            {
+                return null;
+            }
+
+            st.IdOfLastOpenedTimeTable = idOfTimeTable;
+            int numOfTriesToSave = 3;
+
+            //try save 3 times
+            try
+            {
+                do
+                {
+                } while (!await Serialize(st) && --numOfTriesToSave == 0);
+            }
+            catch
+            {
+                return false;
+            }
+
+            return numOfTriesToSave > 0;
+        }
+
         public static async Task<SchoolTimetable> Deserialize()
         {
             var xmlSerializer = new XmlSerializer(typeof(SchoolTimetable));

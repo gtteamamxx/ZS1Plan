@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Windows.Foundation.Metadata;
 using Windows.Storage;
@@ -9,6 +10,7 @@ using Windows.UI.Text;
 using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Controls.Primitives;
 using Windows.UI.Xaml.Documents;
 using Windows.UI.Xaml.Media;
 
@@ -97,7 +99,7 @@ namespace ZS1Plan
             SplitViewContentScrollViewer.Visibility = Visibility.Visible;
             SplitViewContentFrame.Visibility = Visibility.Collapsed;
 
-            TitleText.Text = "Plan lekcji" + (TimeTable.IdOfLastOpenedTimeTable == -1 ? "" : (" - " + TimeTable.GetLatestOpenedTimeTable().name));
+            TitleText.Text = "Plan lekcji" + (TimeTable.IdOfLastOpenedTimeTable == -1 ? "" : (" - " + Timetable.GetLatestOpenedTimeTable(TimeTable).name));
 
             return true;
         }
@@ -115,10 +117,18 @@ namespace ZS1Plan
 
                 InfoCenterText.Text = "Trwa wczytywanie planu zajęć...";
 
-                TimeTable = await DataServices.Deserialize();
-
-                if (!TimeTable.TimetableOfTeachers.Any() || !TimeTable.TimetablesOfClasses.Any())
+                try
                 {
+                    TimeTable = await DataServices.Deserialize();
+                }
+                catch
+                {
+                    TimeTable = null;
+                }
+
+                if (TimeTable == null || !TimeTable.TimetableOfTeachers.Any() || !TimeTable.TimetablesOfClasses.Any())
+                {
+                    //removes settings
                     InfoCenterProgressRing.Visibility = Visibility.Collapsed;
                     TimeTable = new SchoolTimetable();
                     DownloadTimeTables("Wystąpił problem podczas wczytywania planu lekcji, muisz pobrać go od nowa. Chcesz to zrobić teraz?");
@@ -132,9 +142,9 @@ namespace ZS1Plan
 
                 //show last opened timetable, first check settings config
                 var numOfClassesTimeTables = TimeTable.IdOfLastOpenedTimeTable;
-                if (ApplicationData.Current.LocalSettings.Values.ContainsKey("ShowTimetableAtStartup"))
+                if (LocalSettingsServices.ShowTimetableAtStartup.ContainsKey())
                 {
-                    if ((int.Parse((string)ApplicationData.Current.LocalSettings.Values["ShowTimetableAtStartup"]) == 0))
+                    if ((int.Parse(LocalSettingsServices.ShowTimetableAtStartup.GetKeyValue()) == 0))
                     {
                         numOfClassesTimeTables = -1;
                     }
@@ -145,7 +155,7 @@ namespace ZS1Plan
                 }
 
                 //if user dont want to show last timetable or no one are sets
-                var lastTimetable = TimeTable.GetLatestOpenedTimeTable();
+                var lastTimetable = Timetable.GetLatestOpenedTimeTable(TimeTable);
 
                 if (numOfClassesTimeTables == -1 || lastTimetable == null)
                 {
@@ -281,7 +291,7 @@ namespace ZS1Plan
                     {
                         InfoCenterStackPanel.Visibility = Visibility.Collapsed;
                         InfoCenterButton.Visibility = Visibility.Collapsed;
-                        await ShowTimeTableAsync(TimeTable.GetLatestOpenedTimeTable() ?? TimeTable.TimetablesOfClasses[0]);
+                        await ShowTimeTableAsync(Timetable.GetLatestOpenedTimeTable(TimeTable) ?? TimeTable.TimetablesOfClasses[0]);
                     }
 
                     TimeTable = new SchoolTimetable();
@@ -301,6 +311,7 @@ namespace ZS1Plan
             };
         }
 
+        private bool _IsFlyOutHelperItemClickedSubscribed;
         /// <summary>
         /// Shows a timetable for user
         /// </summary>
@@ -324,19 +335,20 @@ namespace ZS1Plan
             var splitViewContentGrid = MenuSplitViewContentGrid;
 
             //absolute id of timetable
-            var idOfTimeTable = t.type == 0 ? TimeTable.TimetablesOfClasses.IndexOf(t) :
-                TimeTable.TimetablesOfClasses.Count + TimeTable.TimetableOfTeachers.IndexOf(t);
+            var idOfTimeTable = Timetable.GetIdOfTimetable(t, TimeTable);
+                //t.type == Lesson.LessonType.Class ? TimeTable.TimetablesOfClasses.IndexOf(t) :
+                //TimeTable.TimetablesOfClasses.Count + TimeTable.TimetableOfTeachers.IndexOf(t);
 
             //if table which we want to show is actually opened
-            if (!quietChangedOfTimeTable 
-                && idOfTimeTable == TimeTable.IdOfLastOpenedTimeTable 
+            if (!quietChangedOfTimeTable
+                && idOfTimeTable == TimeTable.IdOfLastOpenedTimeTable
                 && splitViewContentGrid.Children.Any())
                 return;
 
             var timeNow = DateTime.Now.TimeOfDay;
             var actualHour = timeNow.Hours;
             var actualMinute = timeNow.Minutes;
-            
+
             //checks checking actual hour and minute which lesson actually is 
             var actualLesson = actualHour == 7 ? 1 : (actualHour == 8 && actualMinute < 55) ? 2 :
                 ((actualHour == 8 && actualMinute >= 55) || actualHour == 9 && actualMinute < 45) ? 3 :
@@ -426,13 +438,16 @@ namespace ZS1Plan
             }
 
 
-            var numOfLessonsOnThisTimetable = t.days.Max(day => day.lessonsNum);
+            var numOfLessonsOnThisTimetable = t.days.Max(day => day.LessonsNum);
 
             //scans by rows
             for (var i = 0; i < numOfLessonsOnThisTimetable + 1; i++)
             {
                 splitViewContentGrid.RowDefinitions.Add(
-                    new RowDefinition() { Height = GridLength.Auto });
+                    new RowDefinition()
+                    {
+                        Height = GridLength.Auto
+                    });
 
                 // i=0 is a dayName eg Nr,Godz,Poniedzialek etc..., 
                 //we dont want to show there lessons
@@ -445,8 +460,21 @@ namespace ZS1Plan
                 for (var j = 0; j < 7; j++)
                 {
                     var tx = new TextBlock();
-                    var grid = new Grid();
+                    var grid = new Grid
+                    {
+                        IsTapEnabled = true
+                    };
 
+                    var infoTextBlock = new TextBlock
+                    {
+                        Visibility = Visibility.Collapsed,
+                        Text = $"[] {j} {i} {Timetable.GetIdOfTimetable(t, TimeTable)}"
+                    };
+
+                    grid.Children.Add(infoTextBlock);
+
+                    //infoTextBlock provides a info about position lesson in a table
+                    //for flyout lesson instance looking
                     var text = string.Empty;
 
                     //j=0 is a number of lesson
@@ -476,9 +504,7 @@ namespace ZS1Plan
                             //i - 1 because i=0 is a row with dayNames (Nr,Godz,Poniedzialek)etc..
                             var lesson = t.days[j - 2].Lessons[i - 1];
 
-                            //type == 0 -> teacher timetable
-                            //type == 1 -> class timetable
-                            if (t.type == 1 && !string.IsNullOrEmpty(lesson.lesson2Name))
+                            if (t.type == Lesson.LessonType.Teacher && !string.IsNullOrEmpty(lesson.lesson2Name))
                             {
                                 tx.Inlines.Add(new Run()
                                 {
@@ -512,11 +538,11 @@ namespace ZS1Plan
                                     Foreground = new SolidColorBrush(Colors.Red)
                                 });
                             }
-                            
+
                             //if this is a class timetable and
                             //at one time, we have two lessons then show
                             //seccond one at bottom in grid
-                            if (!string.IsNullOrEmpty(lesson.lesson2Name) && t.type == 0)
+                            if (!string.IsNullOrEmpty(lesson.lesson2Name) && t.type == Lesson.LessonType.Class)
                             {
                                 tx.Inlines.Add(new Run
                                 {
@@ -546,6 +572,32 @@ namespace ZS1Plan
                         tx.Text = text;
                     }
 
+                    if (tx.Text.Trim() != "" && j > 1)
+                    {
+                        grid.Tapped += (s, e) =>
+                        {
+                            var lesson = Lesson.GetLessonFromLessonGrid(s as Grid, TimeTable);
+
+                            FlyoutHelper.SetTimetable(TimeTable);
+
+                            //if lesson has two lesson, show flyout with choose which lesson
+                            if (!string.IsNullOrEmpty(lesson.lesson2Tag))
+                            {
+                                FlyoutHelper.ShowFlyOutMenuForTwoLessons(grid, lesson);
+                            }
+                            else //clicked lesson has only one lesson
+                            {
+                                FlyoutHelper.ShowFlyOutMenuForLesson(grid);
+                            }
+
+                            if (_IsFlyOutHelperItemClickedSubscribed == false)
+                            {
+                                _IsFlyOutHelperItemClickedSubscribed = true;
+
+                                FlyoutHelper.OnItemClicked += FlyoutHelper_OnItemClicked;
+                            }
+                        };
+                    }
                     grid.Children.Add(tx);
 
                     Grid.SetColumn(grid, j);
@@ -564,7 +616,7 @@ namespace ZS1Plan
             }
 
             /* Saving lastOpenedTimeTable */
-            if (await SaveLastOpenedTimeTableToFile(idOfTimeTable) == false)
+            if (await DataServices.SaveLastOpenedTimeTableToFile(idOfTimeTable, TimeTable) == false)
             {
                 //If Plan is not saved
                 ResetView();
@@ -580,40 +632,32 @@ namespace ZS1Plan
                 _isLoaded = false;
             }
         }
+
         /// <summary>
-        /// Saves last opened timetable to file
+        /// When user clicked and selected an option on item
         /// </summary>
-        /// <param name="idOfTimeTable">Absolute id of Timetable</param>
-        /// <returns>
-        /// null if latest opened timetable is same as idofTimetable, 
-        /// false if there was an error, true if saving was completed succesfully
-        /// </returns>
-        private async Task<bool?> SaveLastOpenedTimeTableToFile(int idOfTimeTable)
+        /// <param name="clickedLesson">Clicked lesson</param>
+        /// <param name="buttonType">Type of Button selected</param>
+        /// <param name="lessonId">Number of lesson, which user want to execute</param>
+        private void FlyoutHelper_OnItemClicked(Lesson clickedLesson, FlyoutHelper.ButtonClickedType buttonType, int lessonId)
         {
-            if (idOfTimeTable == TimeTable.IdOfLastOpenedTimeTable)
+            if (buttonType == FlyoutHelper.ButtonClickedType.BadButton)
             {
-                return null;
+                return;
             }
-
-            TimeTable.IdOfLastOpenedTimeTable = idOfTimeTable;
-
-            //try save 3 times
-            int numOfTriesToSave = 3;
-            do
-            {
-            } while (!await DataServices.Serialize(TimeTable) && --numOfTriesToSave == 0);
-
-            return numOfTriesToSave > 0;
         }
+
         /// <summary>
         /// Reset view to default settings
-        /// </summary>
-        private void ResetView()
+        /// @Speccially removes all grids and sets title text to default
+        /// <param name="titletext">title text to change</param>
+        ///  </summary>
+        private void ResetView(string titletext = "Plan lekcji")
         {
             MenuSplitViewContentGrid.Children.Clear();
             TextBlock tb = (((Grid)MenuSplitViewContentGrid.Parent).Children.FirstOrDefault(p => p is TextBlock) as TextBlock);
 
-            TitleText.Text = "Plan lekcji";
+            TitleText.Text = titletext;
 
             if (tb != null)
             {
@@ -696,7 +740,7 @@ namespace ZS1Plan
                         //that we dont want to change page and go with view to this timetable
                         //but we want to view stay in settings page, and change timetable 
                         //in background
-                        await ShowTimeTableAsync(TimeTable.GetLatestOpenedTimeTable(), true);
+                        await ShowTimeTableAsync(Timetable.GetLatestOpenedTimeTable(TimeTable), true);
                     };
                 }
 
