@@ -97,6 +97,7 @@
     </Compile>
     <Compile Include="Model\FlyoutHelper.cs" />
     <Compile Include="Model\LocalSettingsServices.cs" />
+    <Compile Include="Model\PagesManager.cs" />
     <Compile Include="Model\SchoolTimetable.cs" />
     <Compile Include="Model\DataServices.cs" />
     <Compile Include="Model\Day.cs" />

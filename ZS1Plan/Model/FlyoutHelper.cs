@@ -119,21 +119,24 @@ namespace ZS1Plan
             if (_clickedLessonId != lesssonId)
                 _clickedLessonId = lesssonId;
 
+            var lesson = Lesson.GetLessonFromLessonGrid(lessonGrid, _timeTable);
+
             var thicknes5 = new Thickness(5.0);
             var thickness1 = new Thickness(1.0);
             var color = new SolidColorBrush(Colors.Brown);
 
             var flyoutButtonClass = new Button {
-                Content = "Pokaż salę",
+                Content = "Pokaż salę" + Environment.NewLine + (_clickedLessonId == 0 ? lesson.lesson1Place : lesson.lesson2Place),
                 Padding = thicknes5,
                 Margin = thicknes5,
                 BorderBrush = color,
                 BorderThickness = thickness1
             };
+
             flyoutButtonClass.Click += FlyoutButton_Click;
 
             var flyoutButtonSubject = new Button {
-                Content = "Pokaż przedmiot",
+                Content = "Pokaż przedmiot" + Environment.NewLine + (_clickedLessonId == 0 ? lesson.lesson1Name : lesson.lesson2Name),
                 Padding = thicknes5,
                 Margin = thicknes5,
                 BorderBrush = color,
@@ -143,8 +146,6 @@ namespace ZS1Plan
             flyoutButtonSubject.Click += FlyoutButton_Click;
             Grid.SetColumn(flyoutButtonSubject, 1);
 
-            var lesson = Lesson.GetLessonFromLessonGrid(lessonGrid, _timeTable);
-
             Button flyoutButtonTeacher = null;
 
             if (!lesson.IsLessonTeacherLesson()) {
@@ -153,11 +154,10 @@ namespace ZS1Plan
                 var timetableOfTeacher = _timeTable.TimetableOfTeachers.FirstOrDefault(p => p.name.Substring(p.name.IndexOf('('),
                    p.name.IndexOf(p.name.ElementAt((p.name.Length - 1) - p.name.IndexOf('(')))).Contains(teacherName.Replace("#", "")));
 
-                if (timetableOfTeacher == null)
+                if (timetableOfTeacher == null) // thgere was problem with #Pa; linq expression ^ did not found it
                     timetableOfTeacher = _timeTable.TimetableOfTeachers.First(p => p.name.Contains("J.Pusiak"));
 
-                flyoutButtonTeacher = new Button
-                {
+                flyoutButtonTeacher = new Button {
                     Content = "Pokaż nauczyciela" + Environment.NewLine + timetableOfTeacher.name,
                     Padding = thicknes5,
                     Margin = thicknes5,

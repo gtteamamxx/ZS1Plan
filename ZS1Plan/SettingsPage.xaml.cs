@@ -34,12 +34,9 @@ namespace ZS1Plan
             //because we know, that this page will be created only one time, because
             //we added NavigationCacheMode="Required" which means, that the page will be
             //cached in memory
-            NightModeToogleSwitch.Toggled += (s, e) =>
-            {
+            NightModeToogleSwitch.Toggled += (s, e) => {
                 if (LocalSettingsServices.AppTheme.ContainsKey())
-                {
                     LocalSettingsServices.AppTheme.RemoveKey();
-                }
 
                 LocalSettingsServices.AppTheme.AddKey(Application.Current.RequestedTheme);
 
@@ -48,18 +45,12 @@ namespace ZS1Plan
 
                 //if we changed text before.. dont add it again
                 if (!headerTextBlock.Text.Contains("ponownym"))
-                {
-                    headerTextBlock.Text += Environment.NewLine +
-                                                    "Zmiany zostaną wprowadzone po ponownym włączeniu aplikacji.";
-                }
+                    headerTextBlock.Text += Environment.NewLine + "Zmiany zostaną wprowadzone po ponownym włączeniu aplikacji.";
             };
 
-            HighLightActualLessonToogleSwitch.Toggled += (s, e) =>
-            {
+            HighLightActualLessonToogleSwitch.Toggled += (s, e) => {
                 if (LocalSettingsServices.ShowActiveLesson.ContainsKey())
-                {
                     LocalSettingsServices.ShowActiveLesson.RemoveKey();
-                }
 
                 LocalSettingsServices.ShowActiveLesson.AddKey(HighLightActualLessonToogleSwitch.IsOn);
 
@@ -68,18 +59,16 @@ namespace ZS1Plan
                 OnHighLightActiveLessonsChanged?.Invoke();
             };
 
-            ShowTimeTableAtStartupToogleSwitch.Toggled += (s, e) =>
-            {
+            ShowTimeTableAtStartupToogleSwitch.Toggled += (s, e) => {
                 if (LocalSettingsServices.ShowTimetableAtStartup.ContainsKey())
-                {
                     LocalSettingsServices.ShowTimetableAtStartup.RemoveKey();
-                }
 
                 LocalSettingsServices.ShowTimetableAtStartup.AddKey(HighLightActualLessonToogleSwitch.IsOn);
 
-
                 ShowTimeTableAtStartupComboBox.Visibility = ShowTimeTableAtStartupToogleSwitch.IsOn ? Visibility.Visible : Visibility.Collapsed;
             };
+
+            this.Loaded += (s, e) => PagesManager.AddPage(null, PagesManager.ePagesType.SettingsPage);
         }
 
         /// <summary>
@@ -97,9 +86,8 @@ namespace ZS1Plan
         {
             //if there isnt a value, then set a default value to 1
             if (!LocalSettingsServices.ShowActiveLesson.ContainsKey())
-            {
                 LocalSettingsServices.ShowActiveLesson.AddKey(true);
-            }
+
             HighLightActualLessonToogleSwitch.IsOn = int.Parse(LocalSettingsServices.ShowActiveLesson.GetKeyValue()) == 1;
 
         }
@@ -115,42 +103,32 @@ namespace ZS1Plan
         {
             //sets default values
             if (!LocalSettingsServices.ShowTimetableAtStartup.ContainsKey())
-            {
                 LocalSettingsServices.ShowTimetableAtStartup.AddKey(true);
-            }
+
             if (!LocalSettingsServices.ShowTimetableAtStartupValue.ContainsKey())
-            {
                 LocalSettingsServices.ShowTimetableAtStartupValue.AddKey("");
-            }
 
             ShowTimeTableAtStartupToogleSwitch.IsOn = int.Parse(LocalSettingsServices.ShowTimetableAtStartup.GetKeyValue()) == 1;
 
             //fill a ComboBox.Items with names of timetables
             foreach (var t in Timetable.GetAllTimeTables(MainPage.TimeTable))
-            {
                 ShowTimeTableAtStartupComboBox.Items.Add(t.name);
-            }
 
             //If switch is setted on, then we have to
             //set as selected item in ComboBox a selected
             //timetable
-            if (ShowTimeTableAtStartupToogleSwitch.IsOn)
-            {
+            if (ShowTimeTableAtStartupToogleSwitch.IsOn) {
                 ShowTimeTableAtStartupComboBox.Visibility = Visibility.Visible;
 
                 var nameOfSelectedItemInComboBox = LocalSettingsServices.ShowTimetableAtStartupValue.GetKeyValue();
 
                 if (nameOfSelectedItemInComboBox == "" || ShowTimeTableAtStartupComboBox.Items == null)
-                {
                     return;
-                }
 
                 int idOfSelectedItem = ShowTimeTableAtStartupComboBox.Items.IndexOf(nameOfSelectedItemInComboBox);
 
                 if (idOfSelectedItem == -1)
-                {
                     return;
-                }
 
                 var selectedItem = ShowTimeTableAtStartupComboBox.Items[idOfSelectedItem];
 
@@ -184,15 +162,11 @@ namespace ZS1Plan
             var headerTextBlock = ((TextBlock)ShowTimeTableAtStartupToogleSwitch.Header);
 
             if (!headerTextBlock.Text.Contains("aktualizacji"))
-            {
-                headerTextBlock.Text += Environment.NewLine +
-                                        "Po każdej aktualizacji planu, będziesz musiał ustawić tę opcję ponownie.";
-            }
+                headerTextBlock.Text += Environment.NewLine + "Po każdej aktualizacji planu, będziesz musiał ustawić tę opcję ponownie.";
 
             if (LocalSettingsServices.ShowTimetableAtStartup.ContainsKey())
-            {
                 LocalSettingsServices.ShowTimetableAtStartup.RemoveKey();
-            }
+
 
             LocalSettingsServices.ShowTimetableAtStartup.AddKey(ShowTimeTableAtStartupToogleSwitch.IsOn);
 
@@ -209,9 +183,7 @@ namespace ZS1Plan
             MainPage.SetTitleText("Ustawienia");
 
             if (MainPage.InfoCenterStackPanelVisibility == Visibility.Visible)
-            {
                 MainPage.InfoCenterStackPanelVisibility = Visibility.Collapsed;
-            }
         }
     }
 }

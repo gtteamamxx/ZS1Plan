@@ -30,6 +30,7 @@ namespace ZS1Plan
         public App()
         {
             new LocalSettingsServices();
+            new PagesManager();
 
             var appTheme = LocalSettingsServices.AppTheme.ContainsKey()
                 ? LocalSettingsServices.AppTheme.GetKeyValue()
