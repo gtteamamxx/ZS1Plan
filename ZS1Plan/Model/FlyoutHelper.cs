@@ -35,9 +35,7 @@ namespace ZS1Plan
         public static void SetTimetable(SchoolTimetable st)
         {
             if (_timeTable == null)
-            {
                 _timeTable = st;
-            }
         }
 
         /// <summary>
@@ -48,8 +46,7 @@ namespace ZS1Plan
         /// <param name="buttonParam">buttons</param>
         private static void ShowFlyOutMenu(Grid lessonGrid, params object[] buttonParam)
         {
-            var invisibleButton = new Button
-            {
+            var invisibleButton = new Button {
                 Visibility = Visibility.Collapsed
             };
 
@@ -57,8 +54,10 @@ namespace ZS1Plan
 
             var contentGrid = new Grid();
 
-            for (int i = 0; i < buttonParam.Length; i++)
-            {
+            for (int i = 0; i < buttonParam.Length; i++) {
+                if (buttonParam[i] == null) // button is not valid button
+                    continue;
+
                 contentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
                 var buttonFromParam = buttonParam[i] as Button;
@@ -67,39 +66,38 @@ namespace ZS1Plan
                 contentGrid.Children.Add(buttonFromParam);
             }
 
-            var flyout = new Flyout
-            {
+            var flyout = new Flyout {
                 Content = contentGrid
             };
 
-            flyout.Opened += (s, e) =>
-            {
+            flyout.Opened += (s, e) => {
                 //check if lessonGrid has red border brush
                 //then set thickness to 2.1, because we have to check
                 //somehow 
                 var lessonGridBorderBrush = (SolidColorBrush)lessonGrid.BorderBrush;
+
                 lessonGrid.BorderThickness = 
-                     lessonGridBorderBrush != null && Colors.Red.Equals(lessonGridBorderBrush.Color) ? new Thickness(2.1) : new Thickness(2.0);
+                     lessonGridBorderBrush != null 
+                     && (Colors.Red.Equals(lessonGridBorderBrush.Color)
+                     || Colors.Yellow.Equals(lessonGridBorderBrush.Color)) 
+                     ? new Thickness(2.1) : new Thickness(2.0);
 
                 lessonGrid.BorderBrush = new SolidColorBrush(Colors.Blue);
             };
-            flyout.Closed += (s, e) =>
-            {
-                //if user clicked new lessongrid
-                if (_clickedLessonGrid != (Grid)((Button)((Flyout)s).Target).Parent)
-                {
+            flyout.Closed += (s, e) => {
+                //if user clicked new LessonGrid
+                /*if (((Grid)((Button)((Flyout)s).Target).Parent) != null && 
+                (_clickedLessonGrid != ((Grid)((Button)((Flyout)s).Target).Parent))) {
                     _clickedLessonId = 0;
                     _clickedLessonGrid = null;
-                }
+                }*/
 
                 //if Thickness.Equals(lessonGrid.BorderThickness, new Thickness(2.1));
-                if (Math.Abs(lessonGrid.BorderThickness.Bottom - 2.1) < 0.01)
-                {
+                if (Math.Abs(lessonGrid.BorderThickness.Bottom - 2.1) < 0.01) {
                     lessonGrid.BorderThickness = new Thickness(2.0);
                     lessonGrid.BorderBrush = new SolidColorBrush(Colors.Red);
                 }
-                else
-                {
+                else {
                     lessonGrid.BorderThickness = new Thickness(1.0);
                     lessonGrid.BorderBrush = new SolidColorBrush(App.Current.RequestedTheme == ApplicationTheme.Light ? Colors.Black : Colors.White);
                 }
@@ -107,9 +105,7 @@ namespace ZS1Plan
             };
 
             if (_clickedLessonGrid == null || _clickedLessonGrid != lessonGrid)
-            {
                 _clickedLessonGrid = lessonGrid;
-            }
 
             flyout.ShowAt(invisibleButton);
         }
@@ -118,14 +114,16 @@ namespace ZS1Plan
         /// Shows flyoutmenu for one lesson
         /// </summary>
         /// <param name="lessonGrid">grid where lesson's placed</param>
-        public static void ShowFlyOutMenuForLesson(Grid lessonGrid)
+        public static void ShowFlyOutMenuForLesson(Grid lessonGrid, int lesssonId = 0)
         {
+            if (_clickedLessonId != lesssonId)
+                _clickedLessonId = lesssonId;
+
             var thicknes5 = new Thickness(5.0);
             var thickness1 = new Thickness(1.0);
             var color = new SolidColorBrush(Colors.Brown);
 
-            var flyoutButtonClass = new Button
-            {
+            var flyoutButtonClass = new Button {
                 Content = "Pokaż salę",
                 Padding = thicknes5,
                 Margin = thicknes5,
@@ -134,27 +132,41 @@ namespace ZS1Plan
             };
             flyoutButtonClass.Click += FlyoutButton_Click;
 
-            var flyoutButtonSubject = new Button
-            {
+            var flyoutButtonSubject = new Button {
                 Content = "Pokaż przedmiot",
                 Padding = thicknes5,
                 Margin = thicknes5,
                 BorderBrush = color,
                 BorderThickness = thickness1
             };
+
             flyoutButtonSubject.Click += FlyoutButton_Click;
             Grid.SetColumn(flyoutButtonSubject, 1);
 
-            var flyoutButtonTeacher = new Button
-            {
-                Content = "Pokaż nauczyciela",
-                Padding = thicknes5,
-                Margin = thicknes5,
-                BorderBrush = color,
-                BorderThickness = thickness1
-            };
-            flyoutButtonTeacher.Click += FlyoutButton_Click;
+            var lesson = Lesson.GetLessonFromLessonGrid(lessonGrid, _timeTable);
 
+            Button flyoutButtonTeacher = null;
+
+            if (!lesson.IsLessonTeacherLesson()) {
+                var teacherName = _clickedLessonId == 0 ? lesson.lesson1Tag : lesson.lesson2Tag;
+
+                var timetableOfTeacher = _timeTable.TimetableOfTeachers.FirstOrDefault(p => p.name.Substring(p.name.IndexOf('('),
+                   p.name.IndexOf(p.name.ElementAt((p.name.Length - 1) - p.name.IndexOf('(')))).Contains(teacherName.Replace("#", "")));
+
+                if (timetableOfTeacher == null)
+                    timetableOfTeacher = _timeTable.TimetableOfTeachers.First(p => p.name.Contains("J.Pusiak"));
+
+                flyoutButtonTeacher = new Button
+                {
+                    Content = "Pokaż nauczyciela" + Environment.NewLine + timetableOfTeacher.name,
+                    Padding = thicknes5,
+                    Margin = thicknes5,
+                    BorderBrush = color,
+                    BorderThickness = thickness1
+                };
+
+                flyoutButtonTeacher.Click += FlyoutButton_Click;
+            }
             ShowFlyOutMenu(lessonGrid, flyoutButtonClass, flyoutButtonSubject, flyoutButtonTeacher);
         }
 
@@ -164,18 +176,17 @@ namespace ZS1Plan
             var thickness1 = new Thickness(1.0);
             var color = new SolidColorBrush(Colors.Brown);
 
-            var flyoutButtonFirstLesson = new Button
-            {
+            var flyoutButtonFirstLesson = new Button {
                 Content = lesson.lesson1Name,
                 Padding = thicknes5,
                 Margin = thicknes5,
                 BorderBrush = color,
                 BorderThickness = thickness1
             };
+
             flyoutButtonFirstLesson.Click += FlyoutButtonFirstLesson_Click; 
 
-            var flyoutButtonSecondLesson = new Button
-            {
+            var flyoutButtonSecondLesson = new Button {
                 Content = lesson.lesson2Name,
                 Padding = thicknes5,
                 Margin = thicknes5,
@@ -193,7 +204,7 @@ namespace ZS1Plan
         private static void FlyoutButtonFirstLesson_Click(object sender, RoutedEventArgs e)
         {
             _clickedLessonId = 0;
-            ShowFlyOutMenuForLesson(_clickedLessonGrid);
+            ShowFlyOutMenuForLesson(_clickedLessonGrid, 0);
         }
         /// <summary>
         /// Used when user clicked second lesson in FlyOut (lesson at right)
@@ -201,7 +212,7 @@ namespace ZS1Plan
         private static void FlyoutButtonSecondLesson_Click(object sender, RoutedEventArgs e)
         {
             _clickedLessonId = 1;
-            ShowFlyOutMenuForLesson(_clickedLessonGrid);
+            ShowFlyOutMenuForLesson(_clickedLessonGrid, 1);
         }
 
         /// <summary>
@@ -212,12 +223,10 @@ namespace ZS1Plan
             var selectedLesson = Lesson.GetLessonFromLessonGrid(_clickedLessonGrid, _timeTable);
             var buttonContentString = string.Empty;
 
-            try
-            {
+            try {
                 buttonContentString = ((TextBlock)((Button)sender).ContentTemplateRoot).Text ?? "";
             }
-            catch
-            {
+            catch {
                 return;
             }
 

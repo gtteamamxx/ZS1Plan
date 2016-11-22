@@ -139,7 +139,7 @@ namespace ZS1Plan
                                     taghref = adressList[1].GetAttribute("href");
                                     break;
                                 case 3:
-                                    name = sList[1].TextContent;
+                                    name = pList[1].TextContent;
 
                                     if (!name.Contains("1/2") || !name.Contains("2/2"))
                                     {

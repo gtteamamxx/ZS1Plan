@@ -14,6 +14,7 @@ namespace ZS1Plan
             Teacher = 1
         }
 
+        public bool IsLessonTeacherLesson() => !string.IsNullOrEmpty(lesson2Name) && string.IsNullOrEmpty(lesson2Tag);
         public string lesson1Name { get; set; }
         public string lesson1Place { get; set; }
         public string lesson1Tag { get; set; }

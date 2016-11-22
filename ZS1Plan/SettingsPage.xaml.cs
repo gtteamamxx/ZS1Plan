@@ -98,7 +98,7 @@ namespace ZS1Plan
             //if there isnt a value, then set a default value to 1
             if (!LocalSettingsServices.ShowActiveLesson.ContainsKey())
             {
-                LocalSettingsServices.ShowActiveLesson.AddKey();
+                LocalSettingsServices.ShowActiveLesson.AddKey(true);
             }
             HighLightActualLessonToogleSwitch.IsOn = int.Parse(LocalSettingsServices.ShowActiveLesson.GetKeyValue()) == 1;
 
