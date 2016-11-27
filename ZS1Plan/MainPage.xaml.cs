@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
@@ -12,6 +13,7 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
 using Windows.UI.Xaml.Documents;
+using Windows.UI.Xaml.Markup;
 using Windows.UI.Xaml.Media;
 
 namespace ZS1Plan
@@ -32,8 +34,6 @@ namespace ZS1Plan
                                    "10:45 - 11:30", "11:35 - 12:20", "12:30 - 13:15", "13:20 - 14:05",
                                     "14:10 - 14:55", "15:00 - 15:45", "15:50 - 16:35" };
         private bool _isLoaded;
-        private Timetable _actualShowedTimetable;
-
 
         private static MainPage _gui;
 
@@ -117,11 +117,20 @@ namespace ZS1Plan
                 SplitViewContentScrollViewer.Visibility = Visibility.Visible;
                 SplitViewContentFrame.Visibility = Visibility.Collapsed;
             }
+            else if(backPageType == PagesManager.ePagesType.TimeTable_Place)
+            {
+                tuple = PagesManager.GetPage();
+
+                if (tuple == null)
+                    return false;
+
+                backPageType = tuple.Item1;
+            }
             else
             {
                 tuple = PagesManager.GetPageWithoutDelete();
-
-                if(tuple.Item1 == PagesManager.ePagesType.SettingsPage)
+                backPageType = tuple.Item1;
+                if (backPageType == PagesManager.ePagesType.SettingsPage)
                 {
                     SplitViewContentScrollViewer.Visibility = Visibility.Collapsed;
                     SplitViewContentFrame.Visibility = Visibility.Visible;
@@ -131,7 +140,14 @@ namespace ZS1Plan
                 }
             }
 
-            await ShowTimeTableAsync(tuple.Item2 as Timetable,false,false);
+            if(backPageType == PagesManager.ePagesType.Timetable)
+                await ShowTimeTableAsync(tuple.Item2 as Timetable, false, false);
+            else
+            {
+                var tuple2 = tuple.Item2 as Tuple<List<Lesson>, string>;
+
+                Showplaces(tuple2.Item1, tuple2.Item2);
+            }
             return true;
         }
         /// <summary>
@@ -227,14 +243,11 @@ namespace ZS1Plan
                 _isLoaded = false;
             }
             else
-            {
                 InfoCenterText.Text = "Aby odświeżyć plan zajęc, musisz mieć połączenie z internetem! Naciśnij przycisk poniżej aby spróbować ponownie";
-            }
 
             if (_isButtonClickEventSubscribed)
-            {
                 return;
-            }
+
             _isButtonClickEventSubscribed = true;
 
             InfoCenterButton.Click += async (s, es) =>
@@ -339,6 +352,7 @@ namespace ZS1Plan
         }
 
         private bool _IsFlyOutHelperItemClickedSubscribed;
+
         /// <summary>
         /// Shows a timetable for user
         /// </summary>
@@ -347,8 +361,6 @@ namespace ZS1Plan
         /// <returns>Task for await</returns>
         private async Task ShowTimeTableAsync(Timetable t, bool quietChangedOfTimeTable = false, bool addPage = true)
         {
-            _actualShowedTimetable = t;
-
             if (InfoCenterStackPanel.Visibility == Visibility.Visible)
                 InfoCenterStackPanel.Visibility = Visibility.Collapsed;
 
@@ -373,16 +385,14 @@ namespace ZS1Plan
 
             var headerGrid = splitViewContentGrid.Parent as Grid;
 
-            if ((!quietChangedOfTimeTable
-                && idOfTimeTable == TimeTable.IdOfLastOpenedTimeTable
-                && splitViewContentGrid.Children.Any())
+            if ((!quietChangedOfTimeTable && idOfTimeTable == TimeTable.IdOfLastOpenedTimeTable && splitViewContentGrid.Children.Any())
                 || headerGrid == null)
             {
-
-                if (!TitleText.Text.Contains("Plan lekcji") && !quietChangedOfTimeTable)
+                if (!TitleText.Text.Contains("Plan lekcji"))
+                {
                     TitleText.Text = "Plan lekcji - " + t.name;
-
-                return;
+                    return;
+                }
             }
             var timeNow = DateTime.Now.TimeOfDay;
             var actualHour = timeNow.Hours;
@@ -485,14 +495,6 @@ namespace ZS1Plan
                         IsTapEnabled = true
                     };
 
-                    var infoTextBlock = new TextBlock
-                    {
-                        Visibility = Visibility.Collapsed,
-                        Text = $"[] {j} {i} {Timetable.GetIdOfTimetable(t, TimeTable)}"
-                    };
-
-                    grid.Children.Add(infoTextBlock);
-
                     //infoTextBlock provides a info about position lesson in a table
                     //for flyout lesson instance looking
                     var text = string.Empty;
@@ -519,6 +521,12 @@ namespace ZS1Plan
                             break;
 
                         default:
+                            var infoTextBlock = new TextBlock
+                            {
+                                Visibility = Visibility.Collapsed,
+                                Text = $"[] {j} {i} {Timetable.GetIdOfTimetable(t, TimeTable)}"
+                            };
+                            grid.Children.Add(infoTextBlock);
                             //j is column, i is a row
                             //j - 2 because we have 2 added columns (Nr, Godz) 
                             //i - 1 because i=0 is a row with dayNames (Nr,Godz,Poniedzialek)etc..
@@ -664,11 +672,30 @@ namespace ZS1Plan
 
             switch (buttonType)
             {
-                case FlyoutHelper.ButtonClickedType.Place:
+                case FlyoutHelper.ButtonClickedType.Place: //show me everything what's in this place
+                    var place = lessonId == 0 ? clickedLesson.lesson1Place : clickedLesson.lesson2Place;
+
+                    var listOfThingsInThisPlace = new List<Lesson>();
+
+                    foreach (var timetable in TimeTable.TimetablesOfClasses)
+                    {
+                        foreach (var day in timetable.days)
+                        {
+                            foreach (var lesson in day.Lessons)
+                            {
+                                if ((lesson.lesson1Place != null && lesson.lesson1Place == place) || (lesson.lesson2Place != null && lesson.lesson2Place == place))
+                                    listOfThingsInThisPlace.Add(lesson);
+                            }
+                        }
+                    }
+
+                    Showplaces(listOfThingsInThisPlace, place);
                     break;
-                case FlyoutHelper.ButtonClickedType.Subject:
+
+                case FlyoutHelper.ButtonClickedType.Subject: //show me all subjects 
                     break;
-                case FlyoutHelper.ButtonClickedType.Teacher:
+
+                case FlyoutHelper.ButtonClickedType.Teacher: //show me teacher
                     var teacherName = lessonId == 0 ? clickedLesson.lesson1Tag : clickedLesson.lesson2Tag;
 
                     var timetableOfTeacher = TimeTableOfTeachers.FirstOrDefault(p => p.name.Substring(p.name.IndexOf('('),
@@ -684,6 +711,203 @@ namespace ZS1Plan
             }
         }
 
+        private void Showplaces(List<Lesson> listOfLessonsInThisPlace, string place)
+        {
+            PagesManager.AddPage(new Tuple<List<Lesson>, string>(listOfLessonsInThisPlace, place), PagesManager.ePagesType.TimeTable_Place);
+
+            var gird = MenuSplitViewContentGrid;
+            var actualTheme = Application.Current.RequestedTheme;
+
+            if (!gird.Children.Any())
+            {
+                for (var j = 0; j < 7; j++)
+                {
+                    gird.ColumnDefinitions.Add(new ColumnDefinition() { Width = GridLength.Auto });
+
+                    var tx = new TextBlock()
+                    {
+                        Text = _dayNames[j],
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        Padding = new Thickness(5.0)
+                    };
+
+                    var grid = new Grid();
+                    grid.Children.Add(tx);
+                    Grid.SetColumn(grid, j);
+
+                    grid.BorderBrush = new SolidColorBrush(actualTheme == ApplicationTheme.Light ? Colors.Black : Colors.White);
+                    grid.BorderThickness = new Thickness(1.0);
+                    grid.Background = new SolidColorBrush(actualTheme == ApplicationTheme.Light ? Colors.LightCyan : Color.FromArgb(127, 0, 150, 0));
+
+                    gird.Children.Add(grid);
+                }
+            }
+            else
+            {
+                gird.RowDefinitions.Clear();
+
+                var listOfObjects = gird.Children.Select(p => (((Grid)p).Children[0] as TextBlock)).ToList();
+
+                foreach (TextBlock tb in listOfObjects)
+                {
+                    if (!string.IsNullOrEmpty(_dayNames.FirstOrDefault(p => p.Contains(tb.Text))))
+                        continue;
+
+                    gird.Children.Remove((tb.Parent as Grid));
+                }
+            }
+
+            SetTitleText($"Plan lekcji - Sala: {place}");
+
+            var placeTimetable = new Timetable() { type = Lesson.LessonType.Class, name = place, days = new List<Day>() };
+
+            var numOfLessonsOnThisPlace = listOfLessonsInThisPlace.Max(p => p.lessonDayPosition.lessonId)+1;
+
+            placeTimetable.days.AddRange(Enumerable.Range(0, 5).Select( day => new Day() { Lessons = Enumerable.Range(0, numOfLessonsOnThisPlace).Select(
+                lessonId => listOfLessonsInThisPlace.FirstOrDefault(lesson =>
+                     lesson.lessonDayPosition.dayId == day && lesson.lessonDayPosition.lessonId == lessonId) ?? 
+                     new Lesson() {lesson1Name = "", lessonDayPosition = new Lesson.dayCoordiantes() { dayId = day, lessonId = lessonId, timetableId = -1 } } ).ToList()}).ToList());
+
+
+            var headerGrid = gird.Parent as Grid;
+
+            //checks if we dont have title TextBlock created
+            if (headerGrid.Children.FirstOrDefault(p => p is TextBlock && p != InfoCenterText) == null)
+            {
+                headerGrid.Children.Add(new TextBlock()
+                {
+                    Text = placeTimetable.name,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    Margin = new Thickness(10.0),
+                    Padding = new Thickness(10.0),
+                    FontSize = 36
+                });
+            }
+            else
+                ((TextBlock)headerGrid.Children.First(p => p is TextBlock && p != InfoCenterText)).Text = placeTimetable.name;
+
+
+            //scans by rows
+            for (var i = 0; i < numOfLessonsOnThisPlace+1; i++)
+            {
+                gird.RowDefinitions.Add(new RowDefinition() { Height = GridLength.Auto });
+
+                // i=0 is a dayName eg Nr,Godz,Poniedzialek etc..., 
+                //we dont want to show there lessons
+                if (i == 0)
+                    continue;
+
+                //scans on every column
+                for (var j = 0; j < 7; j++)
+                {
+                    var tx = new TextBlock();
+                    var gridlesson = new Grid
+                    {
+                        IsTapEnabled = true
+                    };
+
+                    //infoTextBlock provides a info about position lesson in a table
+                    //for flyout lesson instance looking
+                    var text = string.Empty;
+
+                    //j=0 is a number of lesson
+                    //j=1 is a hours of this lessons
+                    //j>1 is a lesson
+                    if (j == 0 || j == 1)
+                    {
+                        tx.HorizontalAlignment = HorizontalAlignment.Center;
+                        tx.VerticalAlignment = VerticalAlignment.Center;
+                    }
+
+                    switch (j)
+                    {
+                        case 0:
+                            text = i.ToString(); // number of lesson
+                            gridlesson.Background = new SolidColorBrush(actualTheme == ApplicationTheme.Light ? Colors.LightCyan : Color.FromArgb(127, 0, 150, 0));
+                            break;
+
+                        case 1:
+                            text = _lessonTimes[i - 1]; // hour of lessons
+                            gridlesson.Background = new SolidColorBrush(actualTheme == ApplicationTheme.Light ? Colors.LightGreen : Color.FromArgb(127, 204, 0, 0));
+                            break;
+
+                        default:
+                            var infoTextBlock = new TextBlock
+                            {
+                                Visibility = Visibility.Collapsed,
+                                Text = $"[] {j} {i} {Timetable.GetIdOfTimetable(placeTimetable.days[j - 2].Lessons[i - 1].lesson1Name == "" ? null : Timetable.GetTimetableById(placeTimetable.days[j - 2].Lessons[i - 1].lessonDayPosition.timetableId, TimeTable), TimeTable)}"
+                            };
+
+                            gridlesson.Children.Add(infoTextBlock);
+
+                            var lesson = placeTimetable.days[j - 2].Lessons[i - 1];
+
+                            var timetableId = lesson.lessonDayPosition.timetableId;
+                            var timetableType = timetableId == -1 ? Lesson.LessonType.Class : Timetable.GetTimetableById(timetableId, TimeTable).type;
+                            var timetable = timetableId == -1 ? null : Timetable.GetTimetableById(timetableId, TimeTable);
+
+                            tx.Inlines.Add(new Run
+                            {
+                                Text = timetable == null ? "" : timetable.name ,
+                                Foreground = new SolidColorBrush(actualTheme == ApplicationTheme.Light ? Colors.Purple : Colors.LightCyan)
+                            });
+
+                            tx.Inlines.Add(new Run
+                            {
+                                Text = place == lesson.lesson1Place ? $" {lesson.lesson1Name}" : $" {lesson.lesson2Name}",
+                                Foreground = new SolidColorBrush(actualTheme == ApplicationTheme.Light ? Colors.Black : Colors.White),
+                                FontWeight = FontWeights.Bold
+                            });
+
+                            tx.Inlines.Add(new Run
+                            {
+                                Text = place == lesson.lesson1Place ? $" {lesson.lesson1Tag}" : $" {lesson.lesson2Tag}",
+                                Foreground = new SolidColorBrush(Colors.Red)
+                            });
+
+                            break;
+                    }
+
+                    tx.Padding = new Thickness(10.0);
+
+                    //if actually operated record
+                    //was a lesson (then text was not added, and is empty)
+                    if (text != "")
+                        tx.Text = text;
+
+                    if (tx.Text.Trim() != "" && j > 1)
+                    {
+                        gridlesson.Tapped += (f, m) =>
+                        {
+                            var lesson = Lesson.GetLessonFromLessonGrid(f as Grid, TimeTable);
+
+                            FlyoutHelper.SetTimetable(TimeTable);
+
+                            FlyoutHelper.ShowFlyOutMenuForLesson(gridlesson,place==lesson.lesson1Place?0:1);
+
+                            if (_IsFlyOutHelperItemClickedSubscribed == false)
+                            {
+                                _IsFlyOutHelperItemClickedSubscribed = true;
+
+                                FlyoutHelper.OnItemClicked += FlyoutHelper_OnItemClicked;
+                            }
+                        };
+                    }
+                    gridlesson.Children.Add(tx);
+
+                    Grid.SetColumn(gridlesson, j);
+                    Grid.SetRow(gridlesson, i);
+
+                    gridlesson.BorderBrush = new SolidColorBrush(actualTheme == ApplicationTheme.Light ? Colors.Black : Colors.White);
+                    gridlesson.BorderThickness = new Thickness(1.0);
+
+                    gird.Children.Add(gridlesson);
+                }
+            }
+        }
+
+
         /// <summary>
         /// Reset view to default settings
         /// @Speccially removes all grids and sets title text to default
@@ -692,12 +916,7 @@ namespace ZS1Plan
         private void ResetView(string titletext = "Plan lekcji")
         {
             MenuSplitViewContentGrid.Children.Clear();
-            TextBlock tb = (((Grid)MenuSplitViewContentGrid.Parent).Children.FirstOrDefault(p => p is TextBlock) as TextBlock);
-
             TitleText.Text = titletext;
-
-            if (tb != null)
-                tb.Text = "";
         }
 
         /// <summary>
@@ -774,11 +993,11 @@ namespace ZS1Plan
                     // with new settings
                     SettingsPage.OnHighLightActiveLessonsChanged += async () =>
                     {
-                            //we have to use quiet change in timetable, which means
-                            //that we dont want to change page and go with view to this timetable
-                            //but we want to view stay in settings page, and change timetable 
-                            //in background
-                            await ShowTimeTableAsync(Timetable.GetLatestOpenedTimeTable(TimeTable), true, false);
+                        //we have to use quiet change in timetable, which means
+                        //that we dont want to change page and go with view to this timetable
+                        //but we want to view stay in settings page, and change timetable 
+                        //in background
+                        await ShowTimeTableAsync(Timetable.GetLatestOpenedTimeTable(TimeTable), true, false);
                     };
                 }
 

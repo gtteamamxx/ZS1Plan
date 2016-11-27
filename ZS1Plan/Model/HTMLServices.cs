@@ -106,11 +106,7 @@ namespace ZS1Plan
                         //sometimes, a class dont have a number of group in p.ClassName.TextContent
                         //so we have to check it manually
                         if (!lesson.lesson1Name.Contains("1/2") && !lesson.lesson1Name.Contains("2/2"))
-                        {
-                            lesson.lesson1Name += (item.TextContent.Contains("1/2")
-                                ? "-1/2"
-                                : item.TextContent.Contains("2/2") ? "-2/2" : "");
-                        }
+                            lesson.lesson1Name += (item.TextContent.Contains("1/2") ? "-1/2" : item.TextContent.Contains("2/2") ? "-2/2" : "");
 
                         if (adressList.Count() == 0)
                         {
@@ -119,8 +115,20 @@ namespace ZS1Plan
                         }
                         else
                         {
-                            lesson.lesson1Tag = adressList.First(p => p.ClassName == "n").TextContent;
-                            lesson.lesson1TagHref = adressList.First().GetAttribute("href");
+                            if (pList.Count == 3)
+                            {
+                                lesson.lesson1Tag = pList[1].TextContent;
+
+                                if (lesson.lesson1Tag.Length > 7)
+                                    lesson.lesson1Tag = adressList.First(p => p.ClassName == "n").TextContent;
+
+                                lesson.lesson1TagHref = "";
+                            }
+                            else
+                            {
+                                lesson.lesson1Tag = adressList.First(p => p.ClassName == "n").TextContent;
+                                lesson.lesson1TagHref = adressList.First().GetAttribute("href");
+                            }
                         }
 
                         //sometimes model was other from main model,so we have to
@@ -130,6 +138,7 @@ namespace ZS1Plan
                             string name = "";
                             string tag = "";
                             string taghref = "";
+                            bool checkName = false;
 
                             switch (pList.Count)
                             {
@@ -141,22 +150,34 @@ namespace ZS1Plan
                                 case 3:
                                     name = pList[1].TextContent;
 
-                                    if (!name.Contains("1/2") || !name.Contains("2/2"))
+                                    if (name.Length == 3)
                                     {
-                                        int positionOfLesson2Name = item.TextContent.IndexOf(name, StringComparison.Ordinal);
-                                        var substring = item.TextContent.Substring(positionOfLesson2Name, item.TextContent.Length - positionOfLesson2Name);
-                                        name += substring.Contains("1/2") ? "-1/2" : substring.Contains("2/2") ? "-2/2" : "";
+                                        name = pList[2].TextContent;
+                                        tag = adressList.First().TextContent;
                                     }
 
-                                    tag = pList[2].TextContent;
+                                    checkName = true;
+
+                                    if(tag == "")
+                                        tag = pList[2].TextContent;
+
                                     break;
                                 case 4:
                                     name = pList[2].TextContent;
+                                    checkName = true;
                                     tag = pList[3].TextContent;
                                     break;
+
                                 default:
                                     name = "error";
                                     break;
+                            }
+
+                            if (checkName && (!name.Contains("1/2") && !name.Contains("2/2")))
+                            {
+                                int positionOfLesson2Name = item.TextContent.IndexOf(name, StringComparison.CurrentCulture);
+                                var substring = item.TextContent.Substring(positionOfLesson2Name, item.TextContent.Length - positionOfLesson2Name - 1);
+                                name += substring.Contains("1/2") ? "-1/2" : substring.Contains("2/2") ? "-2/2" : "";
                             }
 
                             lesson.lesson2Name = name;
@@ -164,6 +185,8 @@ namespace ZS1Plan
                             lesson.lesson2Tag = tag;
                             lesson.lesson2TagHref = taghref;
                         }
+
+                        lesson.lessonDayPosition = new Lesson.dayCoordiantes() { timetableId = i, dayId = d, lessonId = h };
                         day.Lessons.Add(lesson);
                     }
 
@@ -231,22 +254,17 @@ namespace ZS1Plan
                             }
 
                             if (fullString[fullString.Length - 1] == ',')
-                            {
                                 fullString = fullString.Remove(fullString.Length - 1, 1);
-                            }
 
                             lesson.lesson2Name = fullString;
                         }
                         else
-                        {
                             lesson.lesson2Name = adressList.First().TextContent +
-                                                 ((item.TextContent.Contains("1/2"))
-                                                     ? "-1/2"
-                                                     : item.TextContent.Contains("2/2") ? "-2/2" : "");
-                        }
+                                                 ((item.TextContent.Contains("1/2")) ? "-1/2" : item.TextContent.Contains("2/2") ? "-2/2" : "");
 
                         lesson.lesson1TagHref = adressList.First().GetAttribute("href");
 
+                        lesson.lessonDayPosition = new Lesson.dayCoordiantes() { timetableId = classesTimetablesNum, dayId = d, lessonId = h };
                         day.Lessons.Add(lesson);
                     }
 

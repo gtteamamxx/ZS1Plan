@@ -12,6 +12,7 @@ namespace ZS1Plan
         public enum ePagesType
         {
             Timetable,
+            TimeTable_Place,
             SettingsPage
         }
         public static int PagesCount => _stack.Count;

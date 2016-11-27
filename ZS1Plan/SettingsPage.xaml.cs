@@ -34,7 +34,8 @@ namespace ZS1Plan
             //because we know, that this page will be created only one time, because
             //we added NavigationCacheMode="Required" which means, that the page will be
             //cached in memory
-            NightModeToogleSwitch.Toggled += (s, e) => {
+            NightModeToogleSwitch.Toggled += (s, e) =>
+            {
                 if (LocalSettingsServices.AppTheme.ContainsKey())
                     LocalSettingsServices.AppTheme.RemoveKey();
 
@@ -48,7 +49,8 @@ namespace ZS1Plan
                     headerTextBlock.Text += Environment.NewLine + "Zmiany zostaną wprowadzone po ponownym włączeniu aplikacji.";
             };
 
-            HighLightActualLessonToogleSwitch.Toggled += (s, e) => {
+            HighLightActualLessonToogleSwitch.Toggled += (s, e) =>
+            {
                 if (LocalSettingsServices.ShowActiveLesson.ContainsKey())
                     LocalSettingsServices.ShowActiveLesson.RemoveKey();
 
@@ -59,7 +61,8 @@ namespace ZS1Plan
                 OnHighLightActiveLessonsChanged?.Invoke();
             };
 
-            ShowTimeTableAtStartupToogleSwitch.Toggled += (s, e) => {
+            ShowTimeTableAtStartupToogleSwitch.Toggled += (s, e) =>
+            {
                 if (LocalSettingsServices.ShowTimetableAtStartup.ContainsKey())
                     LocalSettingsServices.ShowTimetableAtStartup.RemoveKey();
 
@@ -117,7 +120,8 @@ namespace ZS1Plan
             //If switch is setted on, then we have to
             //set as selected item in ComboBox a selected
             //timetable
-            if (ShowTimeTableAtStartupToogleSwitch.IsOn) {
+            if (ShowTimeTableAtStartupToogleSwitch.IsOn)
+            {
                 ShowTimeTableAtStartupComboBox.Visibility = Visibility.Visible;
 
                 var nameOfSelectedItemInComboBox = LocalSettingsServices.ShowTimetableAtStartupValue.GetKeyValue();

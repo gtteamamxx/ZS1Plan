@@ -36,7 +36,7 @@ namespace ZS1Plan
                 ? LocalSettingsServices.AppTheme.GetKeyValue()
                 : null;
 
-            this.RequestedTheme = appTheme == null ? ApplicationTheme.Light : (ApplicationTheme) int.Parse(appTheme as string);
+            this.RequestedTheme = appTheme == null ? ApplicationTheme.Light : (ApplicationTheme)int.Parse(appTheme as string);
 
             this.InitializeComponent();
             this.Suspending += OnSuspending;
