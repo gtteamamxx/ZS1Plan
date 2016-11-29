@@ -28,7 +28,7 @@ namespace ZS1Plan
         {
             _stack.Push(new Tuple<ePagesType, object>(typeOfPage, Page));
         }
-
+        
         public static Tuple<ePagesType, object> GetPage()
         {
             return _stack.Count() == 0 ? null : _stack.Pop() as Tuple<ePagesType, object>;

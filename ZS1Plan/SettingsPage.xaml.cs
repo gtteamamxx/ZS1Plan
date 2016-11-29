@@ -92,7 +92,6 @@ namespace ZS1Plan
                 LocalSettingsServices.ShowActiveLesson.AddKey(true);
 
             HighLightActualLessonToogleSwitch.IsOn = int.Parse(LocalSettingsServices.ShowActiveLesson.GetKeyValue()) == 1;
-
         }
 
         public static bool IsShowActiveLessonsToogleSwitchOn()
@@ -137,7 +136,6 @@ namespace ZS1Plan
                 var selectedItem = ShowTimeTableAtStartupComboBox.Items[idOfSelectedItem];
 
                 ShowTimeTableAtStartupComboBox.SelectedItem = selectedItem;
-
                 return;
             }
 
@@ -152,12 +150,19 @@ namespace ZS1Plan
             //if we load the data, and then sets as selected some item
             //this function is called
             //and text appears. We dont want it
+
+            bool isContentEmpty = string.IsNullOrEmpty((string)ShowTimeTableAtStartupComboBox.SelectedItem);
+
             if (!_firstTimeSettingsPageOpened)
             {
-                _firstTimeSettingsPageOpened = true;
-                return;
+                if (!isContentEmpty && ((string)ShowTimeTableAtStartupComboBox.SelectedItem) == LocalSettingsServices.ShowTimetableAtStartupValue.GetKeyValue())
+                {
+                    _firstTimeSettingsPageOpened = true;
+                    return;
+                }
             }
-            if (string.IsNullOrEmpty((string)ShowTimeTableAtStartupComboBox.SelectedItem))
+
+            if (isContentEmpty)
             {
                 MainPage.TimeTable.IdOfLastOpenedTimeTable = -1;
                 return;
@@ -170,7 +175,6 @@ namespace ZS1Plan
 
             if (LocalSettingsServices.ShowTimetableAtStartup.ContainsKey())
                 LocalSettingsServices.ShowTimetableAtStartup.RemoveKey();
-
 
             LocalSettingsServices.ShowTimetableAtStartup.AddKey(ShowTimeTableAtStartupToogleSwitch.IsOn);
 

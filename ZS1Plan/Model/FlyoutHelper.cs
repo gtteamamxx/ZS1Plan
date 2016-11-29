@@ -63,7 +63,7 @@ namespace ZS1Plan
                 contentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
                 var buttonFromParam = buttonParam[i] as Button;
-                Grid.SetColumn(buttonFromParam, i);
+                Grid.SetColumn(buttonFromParam, contentGrid.ColumnDefinitions.Count-1);
 
                 contentGrid.Children.Add(buttonFromParam);
             }
@@ -121,7 +121,7 @@ namespace ZS1Plan
         /// Shows flyoutmenu for one lesson
         /// </summary>
         /// <param name="lessonGrid">grid where lesson's placed</param>
-        public static void ShowFlyOutMenuForLesson(Grid lessonGrid, int lesssonId = 0)
+        public static void ShowFlyOutMenuForLesson(Grid lessonGrid, int lesssonId = 0, bool inPlaceView = false)
         {
             if (_clickedLessonId != lesssonId)
                 _clickedLessonId = lesssonId;
@@ -132,16 +132,19 @@ namespace ZS1Plan
             var thickness1 = new Thickness(1.0);
             var color = new SolidColorBrush(Colors.Brown);
 
-            var flyoutButtonClass = new Button
+            Button flyoutButtonClass = null;
+            if (!inPlaceView)
             {
-                Content = "Pokaż salę" + Environment.NewLine + (_clickedLessonId == 0 ? lesson.lesson1Place : lesson.lesson2Place),
-                Padding = thicknes5,
-                Margin = thicknes5,
-                BorderBrush = color,
-                BorderThickness = thickness1
-            };
-
-            flyoutButtonClass.Click += FlyoutButton_Click;
+                flyoutButtonClass = new Button
+                {
+                    Content = "Pokaż salę" + Environment.NewLine + (_clickedLessonId == 0 ? lesson.lesson1Place : lesson.lesson2Place),
+                    Padding = thicknes5,
+                    Margin = thicknes5,
+                    BorderBrush = color,
+                    BorderThickness = thickness1
+                };
+                flyoutButtonClass.Click += FlyoutButton_Click;
+            }
 
             var flyoutButtonSubject = new Button
             {
@@ -162,7 +165,7 @@ namespace ZS1Plan
                 var teacherName = _clickedLessonId == 0 ? lesson.lesson1Tag : lesson.lesson2Tag;
 
                 var timetableOfTeacher = _timeTable.TimetableOfTeachers.FirstOrDefault(p => p.name.Substring(p.name.IndexOf('('),
-                   p.name.IndexOf(p.name.ElementAt((p.name.Length - 1) - p.name.IndexOf('(')))).Contains(teacherName.Replace("#", "")));
+                   p.name.IndexOf(p.name.ElementAt((p.name.Length - 1) - p.name.IndexOf('(')))).Contains(teacherName.Replace("#", "").Trim()));
 
                 if (timetableOfTeacher == null) // thgere was problem with #Pa; linq expression ^ did not found it
                     timetableOfTeacher = _timeTable.TimetableOfTeachers.First(p => p.name.Contains("J.Pusiak"));
@@ -181,7 +184,7 @@ namespace ZS1Plan
             ShowFlyOutMenu(lessonGrid, flyoutButtonClass, flyoutButtonSubject, flyoutButtonTeacher);
         }
 
-        public static void ShowFlyOutMenuForTwoLessons(Grid lessonGrid, Lesson lesson)
+        public static void ShowFlyOutMenuForTwoLessons(Grid lessonGrid, Lesson lesson, bool inPlaceView = false)
         {
             var thicknes5 = new Thickness(5.0);
             var thickness1 = new Thickness(1.0);
@@ -239,16 +242,15 @@ namespace ZS1Plan
             try
             {
                 buttonContentString = ((TextBlock)((Button)sender).ContentTemplateRoot).Text ?? "";
+                int typeOfClickedButton = buttonContentString.Contains("salę") ? 0 :
+    buttonContentString.Contains("przedmiot") ? 1 : buttonContentString.Contains("nauczyciela") ? 2 : -1;
+
+                OnItemClicked?.Invoke(selectedLesson, (ButtonClickedType)typeOfClickedButton, _clickedLessonId);
             }
             catch
             {
                 return;
             }
-
-            int typeOfClickedButton = buttonContentString.Contains("salę") ? 0 :
-                buttonContentString.Contains("przedmiot") ? 1 : buttonContentString.Contains("nauczyciela") ? 2 : -1;
-
-            OnItemClicked?.Invoke(selectedLesson, (ButtonClickedType)typeOfClickedButton, _clickedLessonId);
         }
     }
 }

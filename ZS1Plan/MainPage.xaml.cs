@@ -39,17 +39,7 @@ namespace ZS1Plan
 
         public static void SetTitleText(string text) => _gui.TitleText.Text = text;
 
-        public static Visibility InfoCenterStackPanelVisibility
-        {
-            get
-            {
-                return _gui.InfoCenterStackPanel.Visibility;
-            }
-            set
-            {
-                _gui.InfoCenterStackPanel.Visibility = value;
-            }
-        }
+        public static Visibility InfoCenterStackPanelVisibility  {  get { return _gui.InfoCenterStackPanel.Visibility;  } set {  _gui.InfoCenterStackPanel.Visibility = value; }  }
 
         public MainPage()
         {
@@ -86,68 +76,50 @@ namespace ZS1Plan
                 if (!(await GoBack()))
                     Application.Current.Exit();
             };
+
+            FlyoutHelper.OnItemClicked += FlyoutHelper_OnItemClicked;
+
         }
 
         private async Task<bool> GoBack()
         {
-            //if settings page is opened
             var tuple = PagesManager.GetPage();
-
             var beforeTuple = PagesManager.GetPageWithoutDelete();
 
+            do
+            {
+                tuple = PagesManager.GetPage();
+                beforeTuple = PagesManager.GetPageWithoutDelete();
+            }
+            while (tuple  != null && (beforeTuple != null && beforeTuple.Item2 == tuple.Item2
+                                    && beforeTuple.Item1 == tuple.Item1));
+
             //there's no item in queue, so exit app
-            if (tuple == null || beforeTuple == null
-                || (beforeTuple != null && beforeTuple.Item1 == PagesManager.ePagesType.Timetable && beforeTuple.Item2 == tuple.Item2))
+            if (tuple == null)
                 return false;
 
             var backPageType = tuple.Item1;
 
-            if (backPageType == PagesManager.ePagesType.SettingsPage) // if last object was settings page, then
+            if (backPageType == PagesManager.ePagesType.SettingsPage)
             {
-                //get again last one, because we are currently in settings page, and we want to go back, so we have to
-                //have element before it
-                tuple = PagesManager.GetPage();
-                beforeTuple = PagesManager.GetPageWithoutDelete();
-
-                if (tuple == null)
-                    return false;
-
-                backPageType = tuple.Item1;
-
+                SplitViewContentScrollViewer.Visibility = Visibility.Collapsed;
+                SplitViewContentFrame.Visibility = Visibility.Visible;
+                return true;
+            }
+            else
+            {
                 SplitViewContentScrollViewer.Visibility = Visibility.Visible;
                 SplitViewContentFrame.Visibility = Visibility.Collapsed;
             }
-            else if(backPageType == PagesManager.ePagesType.TimeTable_Place)
-            {
-                tuple = PagesManager.GetPage();
-
-                if (tuple == null)
-                    return false;
-
-                backPageType = tuple.Item1;
-            }
-            else
-            {
-                tuple = PagesManager.GetPageWithoutDelete();
-                backPageType = tuple.Item1;
-                if (backPageType == PagesManager.ePagesType.SettingsPage)
-                {
-                    SplitViewContentScrollViewer.Visibility = Visibility.Collapsed;
-                    SplitViewContentFrame.Visibility = Visibility.Visible;
-
-                    SplitViewContentFrame.Navigate(typeof(SettingsPage));
-                    return true;
-                }
-            }
 
             if(backPageType == PagesManager.ePagesType.Timetable)
-                await ShowTimeTableAsync(tuple.Item2 as Timetable, false, false);
-            else
+                await ShowTimeTableAsync(tuple.Item2 as Timetable, false, true);
+            else if (backPageType == PagesManager.ePagesType.TimeTable_Place)
             {
                 var tuple2 = tuple.Item2 as Tuple<List<Lesson>, string>;
-
-                Showplaces(tuple2.Item1, tuple2.Item2);
+                ShowPlaceTimetable(tuple2.Item1, tuple2.Item2);
             }
+
             return true;
         }
         /// <summary>
@@ -173,9 +145,7 @@ namespace ZS1Plan
                     TimeTable = null;
                 }
 
-                if (TimeTable == null
-                    || !TimeTable.TimetableOfTeachers.Any()
-                    || !TimeTable.TimetablesOfClasses.Any())
+                if (TimeTable == null || !TimeTable.TimetableOfTeachers.Any() || !TimeTable.TimetablesOfClasses.Any())
                 {
                     //removes settings
                     InfoCenterProgressRing.Visibility = Visibility.Collapsed;
@@ -330,7 +300,7 @@ namespace ZS1Plan
                     {
                         InfoCenterStackPanel.Visibility = Visibility.Collapsed;
                         InfoCenterButton.Visibility = Visibility.Collapsed;
-                        await ShowTimeTableAsync(Timetable.GetLatestOpenedTimeTable(TimeTable) ?? TimeTable.TimetablesOfClasses[0], false, false);
+                        await ShowTimeTableAsync(Timetable.GetLatestOpenedTimeTable(TimeTable) ?? TimeTable.TimetablesOfClasses[0], false, true);
                     }
 
                     TimeTable = new SchoolTimetable();
@@ -350,8 +320,6 @@ namespace ZS1Plan
                 }
             };
         }
-
-        private bool _IsFlyOutHelperItemClickedSubscribed;
 
         /// <summary>
         /// Shows a timetable for user
@@ -380,20 +348,20 @@ namespace ZS1Plan
 
             //if table which we want to show is actually opened
 
+            var headerGrid = splitViewContentGrid.Parent as Grid;
+
             if (addPage)
                 PagesManager.AddPage(t, PagesManager.ePagesType.Timetable);
-
-            var headerGrid = splitViewContentGrid.Parent as Grid;
 
             if ((!quietChangedOfTimeTable && idOfTimeTable == TimeTable.IdOfLastOpenedTimeTable && splitViewContentGrid.Children.Any())
                 || headerGrid == null)
             {
                 if (!TitleText.Text.Contains("Plan lekcji"))
-                {
                     TitleText.Text = "Plan lekcji - " + t.name;
-                    return;
-                }
+
+                return;
             }
+
             var timeNow = DateTime.Now.TimeOfDay;
             var actualHour = timeNow.Hours;
             var actualMinute = timeNow.Minutes;
@@ -615,13 +583,6 @@ namespace ZS1Plan
                                 FlyoutHelper.ShowFlyOutMenuForTwoLessons(grid, lesson);
                             else //clicked lesson has only one lesson
                                 FlyoutHelper.ShowFlyOutMenuForLesson(grid);
-
-                            if (_IsFlyOutHelperItemClickedSubscribed == false)
-                            {
-                                _IsFlyOutHelperItemClickedSubscribed = true;
-
-                                FlyoutHelper.OnItemClicked += FlyoutHelper_OnItemClicked;
-                            }
                         };
                     }
                     grid.Children.Add(tx);
@@ -689,7 +650,7 @@ namespace ZS1Plan
                         }
                     }
 
-                    Showplaces(listOfThingsInThisPlace, place);
+                    ShowPlaceTimetable(listOfThingsInThisPlace, place);
                     break;
 
                 case FlyoutHelper.ButtonClickedType.Subject: //show me all subjects 
@@ -711,9 +672,10 @@ namespace ZS1Plan
             }
         }
 
-        private void Showplaces(List<Lesson> listOfLessonsInThisPlace, string place)
+        private void ShowPlaceTimetable(List<Lesson> listOfLessonsInThisPlace, string place, bool addTimetable = true)
         {
-            PagesManager.AddPage(new Tuple<List<Lesson>, string>(listOfLessonsInThisPlace, place), PagesManager.ePagesType.TimeTable_Place);
+            if(addTimetable)
+                PagesManager.AddPage(new Tuple<List<Lesson>, string>(listOfLessonsInThisPlace, place), PagesManager.ePagesType.TimeTable_Place);
 
             var gird = MenuSplitViewContentGrid;
             var actualTheme = Application.Current.RequestedTheme;
@@ -884,14 +846,7 @@ namespace ZS1Plan
 
                             FlyoutHelper.SetTimetable(TimeTable);
 
-                            FlyoutHelper.ShowFlyOutMenuForLesson(gridlesson,place==lesson.lesson1Place?0:1);
-
-                            if (_IsFlyOutHelperItemClickedSubscribed == false)
-                            {
-                                _IsFlyOutHelperItemClickedSubscribed = true;
-
-                                FlyoutHelper.OnItemClicked += FlyoutHelper_OnItemClicked;
-                            }
+                            FlyoutHelper.ShowFlyOutMenuForLesson(gridlesson,place==lesson.lesson1Place?0:1,true);
                         };
                     }
                     gridlesson.Children.Add(tx);
@@ -983,6 +938,11 @@ namespace ZS1Plan
         {
             if (_isLoaded)
             {
+                if (SplitViewContentFrame.Visibility == Visibility.Visible && SplitViewContentFrame.CurrentSourcePageType == typeof(SettingsPage))
+                {
+                    PagesManager.AddPage(null, PagesManager.ePagesType.SettingsPage);
+                    return;
+                }
 
                 if (!_isOnHighLightActiveLessonsToogleSwitchSubscribed)
                 {
