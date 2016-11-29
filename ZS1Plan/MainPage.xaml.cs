@@ -184,6 +184,17 @@ namespace ZS1Plan
 
                 InfoCenterStackPanel.Visibility = Visibility.Collapsed;
 
+                if (lastTimetable.type == Lesson.LessonType.Class)
+                {
+                    MenuListViewOfSections.SelectionChanged += (s, f) => MenuListViewOfSections.ScrollIntoView((s as ListView).SelectedItem, ScrollIntoViewAlignment.Leading);
+                    MenuListViewOfSections.SelectedItem = lastTimetable;
+                }
+                else
+                {
+                    MenuListViewOfTeachers.SelectionChanged += (s, f) => MenuListViewOfTeachers.ScrollIntoView((s as ListView).SelectedItem, ScrollIntoViewAlignment.Leading);
+                    MenuListViewOfTeachers.SelectedItem = lastTimetable;
+                }
+
                 await ShowTimeTableAsync(lastTimetable, false, true);
 
                 _isLoaded = true;
