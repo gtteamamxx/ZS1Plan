@@ -110,7 +110,14 @@ namespace ZS1Plan
 
                         if (adressList.Count() == 0)
                         {
-                            lesson.lesson1Tag = spanList.Where(p => p.ClassName == "p").ToList()[1].TextContent;
+                            try
+                            {
+                                lesson.lesson1Tag = spanList.Where(p => p.ClassName == "p").ToList()[1].TextContent;
+                            }
+                            catch
+                            {
+                                lesson.lesson1Tag = spanList.Where(p => p.ClassName == "p").ToList()[0].TextContent;
+                            }
                             lesson.lesson1TagHref = "";
                         }
                         else
